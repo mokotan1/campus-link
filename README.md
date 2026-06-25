@@ -11,6 +11,29 @@ campus-link/
   docs/      Planning, DDD, AI task rules
 ```
 
+## Folder Labels
+
+Each main folder has its own README label:
+
+- `frontend/README.md`: frontend purpose, scripts, and where UI code lives
+- `backend/README.md`: backend purpose, Gradle commands, and domain package map
+- `docs/README.md`: planning and architecture document map
+
+## Script Map
+
+Run commands from the folder shown in the left column.
+
+| Folder | Command | Purpose |
+| --- | --- | --- |
+| `frontend` | `npm install` | Install frontend dependencies |
+| `frontend` | `npm run dev` | Start Next.js dev server on port 3000 |
+| `frontend` | `npm run build` | Build production frontend |
+| `frontend` | `npm run lint` | Run frontend lint |
+| `backend` | `gradlew.bat bootRun` | Start Spring Boot backend on Windows |
+| `backend` | `./gradlew bootRun` | Start Spring Boot backend on macOS/Linux |
+| `backend` | `gradlew.bat test` | Run backend tests on Windows |
+| `backend` | `./gradlew test` | Run backend tests on macOS/Linux |
+
 ## MVP Goal
 
 Build a working 3-week MVP where a student can:

@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend Folder
 
-## Getting Started
+This folder contains the Next.js frontend.
 
-First, run the development server:
+## What Belongs Here
+
+- App routes
+- UI components
+- Feature-specific frontend logic
+- API client code
+- Page-level state for onboarding, projects, portfolios, and applications
+
+## Main Scripts
+
+Run these commands from `frontend/`.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local URL
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```txt
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Script Meaning
 
-## Learn More
+| Command | Purpose |
+| --- | --- |
+| `npm install` | Install dependencies |
+| `npm run dev` | Start local dev server |
+| `npm run build` | Build production app |
+| `npm run lint` | Run ESLint |
 
-To learn more about Next.js, take a look at the following resources:
+## Feature Folder Map
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```txt
+src/app/                  route-level pages
+src/features/onboarding   onboarding UI and logic
+src/features/projects     project list/detail/registration UI
+src/features/portfolios   portfolio UI and logic
+src/features/applications application/proposal status UI
+src/features/profile      profile UI and logic
+src/shared/components     reusable UI components
+src/shared/lib            reusable utilities
+src/shared/types          shared TypeScript types
+src/shared/constants      shared frontend constants
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment
 
-## Deploy on Vercel
+Copy the example env file:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```txt
+.env.example -> .env.local
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Do not commit `.env.local`.
