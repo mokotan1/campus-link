@@ -225,15 +225,36 @@ cd backend
 gradlew.bat build
 ```
 
-### main 브랜치 보호 설정 (권장)
+### main 브랜치 보호 설정
 
-GitHub 레포 **Settings → Branches → Branch protection rules**에서 main에 아래 규칙을 추가하면 더 안전합니다.
+`main` 브랜치 보호 규칙은 **CI 통과 후에만 merge** 되도록 GitHub에서 막아 주는 설정입니다.
 
-- **Require status checks to pass before merging** 켜기
-- 필수 체크: `Frontend 검사`, `Backend 검사` (또는 `CI` 그룹)
-- **Require a pull request before merging** 권장 (직접 push 대신 PR 사용)
+> **중요:** 이 레포는 **Private + GitHub Free** 이면 브랜치 보호 규칙을 **아직 켤 수 없습니다.**  
+> **GitHub Pro** 업그레이드 또는 레포 **Public 전환** 후 설정하세요.
 
-이렇게 하면 CI가 통과하지 않은 코드는 main에 merge할 수 없습니다.
+자세한 단계별 설명: **`docs/branch-protection.md`**
+
+#### 권장 규칙 (한 줄 요약)
+
+| 설정 | 값 |
+| --- | --- |
+| merge 전 PR 필수 | 켜기 |
+| 필수 상태 검사 | **`CI 통과`** |
+| merge 전 main 최신 반영 | 켜기 |
+| force push / 브랜치 삭제 | 금지 |
+
+#### GitHub 웹 설정 경로
+
+1. 레포 **Settings** → **Branches** (또는 **Rules → Rulesets**)
+2. `main` 대상 규칙 추가
+3. **Require status checks to pass before merging** → 검색 후 **`CI 통과`** 선택
+4. **Require a pull request before merging** 켜기
+
+#### Pro/Public 전환 전 팀 규칙
+
+- `main`에 직접 push 하지 않기
+- PR 생성 시 `.github/pull_request_template.md` 체크리스트 작성
+- merge 전 Actions에서 CI 성공 확인
 
 ### 앞으로 추가할 수 있는 것
 
@@ -274,3 +295,4 @@ MVP가 진행되면 아래 워크플로를 추가할 수 있습니다.
 - 기능 단위 작업 목록: `docs/feature-slices.md`
 - Docker 개발환경: `docs/docker-development.md`
 - GitHub Actions CI: `.github/workflows/ci.yml` (설명은 이 README의 GitHub Actions 섹션)
+- main 브랜치 보호: `docs/branch-protection.md`

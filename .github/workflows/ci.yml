@@ -95,3 +95,30 @@ jobs:
 
       - name: 테스트 및 빌드
         run: ./gradlew build --no-daemon
+
+  ci-status:
+    name: CI 통과
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - frontend
+      - backend
+    if: always()
+    steps:
+      - name: CI 결과 확인
+        shell: bash
+        run: |
+          frontend_result="${{ needs.frontend.result }}"
+          backend_result="${{ needs.backend.result }}"
+
+          if [ "$frontend_result" = "failure" ] || [ "$backend_result" = "failure" ]; then
+            echo "Frontend 또는 Backend 검사가 실패했습니다."
+            exit 1
+          fi
+
+          if [ "$frontend_result" = "cancelled" ] || [ "$backend_result" = "cancelled" ]; then
+            echo "Frontend 또는 Backend 검사가 취소되었습니다."
+            exit 1
+          fi
+
+          echo "CI 통과"
