@@ -1,47 +1,47 @@
-# AI Feature Task Template
+# AI 기능 작업 템플릿
 
-Use this template whenever asking an AI agent to implement or modify a feature.
+AI 에이전트에게 기능을 구현하거나 수정해 달라고 요청할 때마다 이 템플릿을 사용합니다.
 
-## Task
+## 작업
 
-Feature:
+기능:
 
-Bounded context:
+바운디드 컨텍스트:
 
-User goal:
+사용자 목표:
 
-## Scope
+## 범위
 
-Files allowed:
+수정 허용 파일:
 
-Files not allowed:
+수정 금지 파일:
 
-Related screen:
+관련 화면:
 
-Related API:
+관련 API:
 
-## Requirements
+## 요구사항
 
-Inputs:
+입력:
 
-Outputs:
+출력:
 
-Validation rules:
+검증 규칙:
 
-Failure cases:
+실패 케이스:
 
-## Acceptance Criteria
+## 완료 기준
 
 - [ ] 
 - [ ] 
 - [ ] 
 
-## Verification
+## 검증
 
-Command or manual check:
+실행 명령 또는 수동 확인:
 
-Expected result:
+기대 결과:
 
-## Notes
+## 참고
 
-Anything the AI should know before editing:
+코드 수정 전 AI가 알아야 할 사항:

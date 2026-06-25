@@ -1,4 +1,6 @@
 * text=auto
+backend/gradlew.bat binary
+*.bat text eol=crlf
 *.md text eol=lf
 *.ts text eol=lf
 *.tsx text eol=lf

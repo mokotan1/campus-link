@@ -1,13 +1,13 @@
-# Development Setup
+# 로컬 개발 환경 설정
 
-## Required Tools
+## 필요 도구
 
-- Node.js 24 or compatible LTS version
+- Node.js 24 또는 호환 LTS 버전
 - npm
 - JDK 21
 - Git
 
-## Frontend Setup
+## 프론트엔드 설정
 
 ```bash
 cd frontend
@@ -15,68 +15,68 @@ npm install
 npm run dev
 ```
 
-The frontend runs at:
+프론트엔드 실행 주소:
 
 ```txt
 http://localhost:3000
 ```
 
-Environment file:
+환경 변수 파일:
 
 ```bash
 cp .env.example .env.local
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 Copy-Item .env.example .env.local
 ```
 
-## Backend Setup
+## 백엔드 설정
 
-Install JDK 21 and make sure this command works:
+JDK 21을 설치한 뒤 아래 명령이 동작하는지 확인합니다.
 
 ```bash
 java -version
 ```
 
-Run the backend:
+백엔드 실행:
 
 ```bash
 cd backend
 ./gradlew bootRun
 ```
 
-On Windows:
+Windows:
 
 ```bat
 cd backend
 gradlew.bat bootRun
 ```
 
-The backend runs at:
+백엔드 실행 주소:
 
 ```txt
 http://localhost:8080
 ```
 
-## Local Environment Variables
+## 로컬 환경 변수
 
-Frontend:
+프론트엔드:
 
 ```txt
 frontend/.env.local
 ```
 
-Backend:
+백엔드:
 
 ```txt
 backend/.env
 ```
 
-Do not commit real environment files. Commit only `.env.example`.
+실제 환경 변수 파일은 커밋하지 않습니다. `.env.example`만 커밋합니다.
 
-## Current Limitation
+## 참고
 
-Java is not installed or not on PATH in the current machine state. The frontend can be generated and checked now, but the backend cannot be run until JDK 21 is installed.
+JDK 21이 설치되지 않았거나 PATH에 없으면 백엔드를 실행할 수 없습니다. 프론트엔드는 JDK 없이도 로컬에서 실행하고 확인할 수 있습니다.
