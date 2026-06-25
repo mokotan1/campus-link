@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Link UI Prototype</title>
+  <style>
+    :root {
+      --ink: #17202a;
+      --muted: #667085;
+      --line: #d9e0e8;
+      --paper: #ffffff;
+      --soft: #f5f7fa;
+      --teal: #0f766e;
+      --teal-soft: #dff7f3;
+      --blue: #2563eb;
+      --blue-soft: #e6efff;
+      --amber: #b45309;
+      --amber-soft: #fff2d8;
+      --rose: #be123c;
+      --rose-soft: #ffe4ea;
+      --green: #15803d;
+      --shadow: 0 18px 50px rgba(23, 32, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(245, 247, 250, 0.96), rgba(255, 255, 255, 1) 360px),
+        #f6f8fb;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      font-size: 20px;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--ink);
+      color: white;
+      font-weight: 900;
+    }
+
+    .nav {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .nav a {
+      text-decoration: none;
+      color: var(--muted);
+      font-weight: 700;
+      padding: 10px 12px;
+      border-radius: 8px;
+    }
+
+    .nav a.active,
+    .nav a:hover {
+      background: var(--paper);
+      color: var(--ink);
+      box-shadow: 0 8px 22px rgba(23, 32, 42, 0.07);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1.04fr 0.96fr;
+      gap: 28px;
+      align-items: start;
+      padding: 28px 0 46px;
+    }
+
+    .intro {
+      padding-top: 16px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--teal);
+      background: var(--paper);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .signal-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    h1 {
+      margin: 22px 0 16px;
+      max-width: 720px;
+      font-size: clamp(38px, 6vw, 68px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 660px;
+      margin: 0 0 24px;
+      color: #4b5563;
+      font-size: 18px;
+      line-height: 1.7;
+    }
+
+    .intro-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      padding: 0 16px;
+      font-weight: 800;
+      color: var(--ink);
+      background: var(--paper);
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .btn.primary {
+      color: white;
+      background: var(--ink);
+      box-shadow: none;
+    }
+
+    .btn.teal {
+      color: white;
+      background: var(--teal);
+      box-shadow: none;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 680px;
+    }
+
+    .metric {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .visual-board {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .mock-preview {
+      min-height: 168px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--paper);
+    }
+
+    .preview-art {
+      height: 118px;
+      display: grid;
+      align-items: end;
+      padding: 12px;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.1), rgba(37, 99, 235, 0.16)),
+        repeating-linear-gradient(90deg, rgba(23, 32, 42, 0.08) 0 1px, transparent 1px 16px),
+        #eef3f8;
+    }
+
+    .preview-art.alt {
+      background:
+        radial-gradient(circle at 72% 30%, rgba(190, 18, 60, 0.18), transparent 0 22%, transparent 23%),
+        linear-gradient(135deg, rgba(180, 83, 9, 0.16), rgba(37, 99, 235, 0.12)),
+        #f8f1e8;
+    }
+
+    .preview-figure {
+      width: 64px;
+      height: 72px;
+      border-radius: 30px 30px 8px 8px;
+      background: var(--ink);
+      box-shadow: 78px -20px 0 -22px var(--teal), 132px 8px 0 -30px var(--amber);
+    }
+
+    .preview-meta {
+      padding: 12px;
+    }
+
+    .preview-meta b {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .preview-meta span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .onboarding-panel {
+      position: sticky;
+      top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-head {
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .panel-head h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+
+    .panel-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .step-badge {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: var(--teal-soft);
+      color: var(--teal);
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .progress {
+      height: 8px;
+      background: #edf1f5;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 20%;
+      background: var(--teal);
+      transition: width 240ms ease;
+    }
+
+    .step {
+      display: none;
+      padding: 22px;
+    }
+
+    .step.active {
+      display: block;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #344054;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 12px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+      background: white;
+    }
+
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .choice {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcfe;
+      font-weight: 800;
+    }
+
+    .choice input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--teal);
+      flex: 0 0 auto;
+    }
+
+    .upload-box {
+      min-height: 118px;
+      border: 1px dashed #9aa7b6;
+      border-radius: 8px;
+      background: #fbfcfe;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 18px;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .step-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px 22px 22px;
+      border-top: 1px solid var(--line);
+    }
+
+    .dashboard {
+      display: none;
+      padding: 34px 0 56px;
+    }
+
+    .dashboard.visible {
+      display: block;
+    }
+
+    .dashboard-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    .dashboard-head h2 {
+      font-size: 36px;
+      margin: 0 0 8px;
+      letter-spacing: 0;
+    }
+
+    .dashboard-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .filter-bar {
+      display: grid;
+      grid-template-columns: 1.4fr repeat(3, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 0 12px;
+    }
+
+    .section-title h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .section-title span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .project-list,
+    .talent-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .project-card,
+    .talent-card,
+    .notice-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .project-card {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      min-height: 190px;
+    }
+
+    .project-media {
+      min-height: 190px;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(15, 118, 110, 0.12)),
+        linear-gradient(180deg, transparent 0 62%, rgba(23, 32, 42, 0.14) 63% 100%),
+        #edf3f7;
+      position: relative;
+    }
+
+    .project-media:before {
+      content: "";
+      position: absolute;
+      left: 26px;
+      bottom: 28px;
+      width: 58px;
+      height: 78px;
+      border-radius: 32px 32px 8px 8px;
+      background: var(--ink);
+      box-shadow: 66px 12px 0 -22px var(--teal), 112px -16px 0 -28px var(--rose);
+    }
+
+    .project-card:nth-child(2) .project-media {
+      background:
+        linear-gradient(135deg, rgba(180, 83, 9, 0.18), rgba(190, 18, 60, 0.09)),
+        linear-gradient(180deg, transparent 0 62%, rgba(23, 32, 42, 0.14) 63% 100%),
+        #f8f0e7;
+    }
+
+    .project-card:nth-child(3) .project-media {
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(21, 128, 61, 0.12)),
+        linear-gradient(180deg, transparent 0 62%, rgba(23, 32, 42, 0.14) 63% 100%),
+        #edf8f2;
+    }
+
+    .project-body {
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .project-body h4,
+    .talent-card h4 {
+      margin: 0 0 7px;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .project-body p,
+    .talent-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      min-height: 26px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0 9px;
+      background: var(--soft);
+      color: #344054;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .tag.teal {
+      background: var(--teal-soft);
+      color: var(--teal);
+    }
+
+    .tag.blue {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .tag.amber {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .tag.rose {
+      background: var(--rose-soft);
+      color: var(--rose);
+    }
+
+    .card-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .verify {
+      color: var(--green);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .side-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .talent-card {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .talent-top {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .avatar {
+      width: 58px;
+      height: 58px;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.18), rgba(190, 18, 60, 0.14)),
+        #eef2f7;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .avatar:before {
+      content: "";
+      position: absolute;
+      left: 19px;
+      top: 12px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--ink);
+      box-shadow: 0 22px 0 9px var(--ink);
+    }
+
+    .notice-card {
+      padding: 16px;
+      background: #fbfcfe;
+    }
+
+    .notice-card h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .notice-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 940px) {
+      .layout,
+      .content-grid,
+      .dashboard-head {
+        grid-template-columns: 1fr;
+      }
+
+      .onboarding-panel {
+        position: static;
+      }
+
+      .filter-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-shell {
+        width: min(100% - 24px, 1180px);
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 16px 0;
+      }
+
+      .nav {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      h1 {
+        font-size: 40px;
+      }
+
+      .metrics,
+      .visual-board,
+      .field-grid,
+      .choice-grid,
+      .filter-bar,
+      .project-card {
+        grid-template-columns: 1fr;
+      }
+
+      .project-media {
+        min-height: 150px;
+      }
+
+      .card-top,
+      .card-foot,
+      .step-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">CL</div>
+        <span>Campus Link</span>
+      </div>
+      <nav class="nav" aria-label="주요 메뉴">
+        <a class="active" href="#onboarding">온보딩</a>
+        <a href="#projects">프로젝트</a>
+        <a href="#portfolio">포트폴리오</a>
+        <a href="#applications">지원 현황</a>
+      </nav>
+    </header>
+
+    <section id="onboarding" class="layout">
+      <div class="intro">
+        <div class="eyebrow"><span class="signal-dot"></span> 대명캠과 성서캠을 연결하는 협업 프로필</div>
+        <h1>서로 필요한 사람을 작업물로 확인하고 바로 팀을 만든다</h1>
+        <p class="lead">
+          캠퍼스가 달라 만나기 어려운 개발자, 기획자, 아티스트가 검증된 포트폴리오와 팀 상황을 기준으로 연결되는 학생 협업 플랫폼입니다.
+        </p>
+        <div class="intro-actions">
+          <button class="btn primary" type="button" data-jump="0">프로필 만들기</button>
+          <button class="btn" type="button" data-show-dashboard>추천 프로젝트 보기</button>
+        </div>
+        <div class="metrics" aria-label="서비스 핵심 지표">
+          <div class="metric">
+            <strong>2</strong>
+            <span>캠퍼스 기반 매칭</span>
+          </div>
+          <div class="metric">
+            <strong>8</strong>
+            <span>역할 태그</span>
+          </div>
+          <div class="metric">
+            <strong>5</strong>
+            <span>온보딩 단계</span>
+          </div>
+        </div>
+
+        <div class="visual-board" aria-label="포트폴리오 미리보기">
+          <div class="mock-preview">
+            <div class="preview-art">
+              <div class="preview-figure"></div>
+            </div>
+            <div class="preview-meta">
+              <b>캐릭터 애니메이션 샘플</b>
+              <span>대명캠 · 2D 애니메이션</span>
+            </div>
+          </div>
+          <div class="mock-preview">
+            <div class="preview-art alt">
+              <div class="preview-figure"></div>
+            </div>
+            <div class="preview-meta">
+              <b>Unity 전투 프로토타입</b>
+              <span>성서캠 · 클라이언트 개발</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="onboarding-panel" aria-label="온보딩 양식">
+        <div class="panel-head">
+          <div>
+            <h2 id="stepTitle">기본 정보</h2>
+            <p id="stepDesc">캠퍼스와 학과를 먼저 확인합니다.</p>
+          </div>
+          <div class="step-badge" id="stepBadge">1/5</div>
+        </div>
+        <div class="progress" aria-hidden="true">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <form>
+          <section class="step active" data-title="기본 정보" data-desc="캠퍼스와 학과를 먼저 확인합니다.">
+            <div class="field-grid">
+              <div class="field">
+                <label for="name">이름 또는 닉네임</label>
+                <input id="name" type="text" placeholder="예: 김하린" />
+              </div>
+              <div class="field">
+                <label for="campus">캠퍼스</label>
+                <select id="campus">
+                  <option>대명캠</option>
+                  <option>성서캠</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="major">학과</label>
+                <input id="major" type="text" placeholder="예: 영상애니메이션과" />
+              </div>
+              <div class="field">
+                <label for="grade">학년</label>
+                <select id="grade">
+                  <option>1학년</option>
+                  <option>2학년</option>
+                  <option>3학년</option>
+                  <option>4학년</option>
+                  <option>졸업 예정</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="email">학교 이메일</label>
+                <input id="email" type="email" placeholder="student@school.ac.kr" />
+              </div>
+            </div>
+          </section>
+
+          <section class="step" data-title="역할 선택" data-desc="프로젝트에서 맡을 수 있는 역할을 표시합니다.">
+            <div class="choice-grid">
+              <label class="choice"><input type="checkbox" checked /> 개발</label>
+              <label class="choice"><input type="checkbox" /> 기획</label>
+              <label class="choice"><input type="checkbox" checked /> 2D 아트</label>
+              <label class="choice"><input type="checkbox" /> 3D 모델링</label>
+              <label class="choice"><input type="checkbox" /> 애니메이션</label>
+              <label class="choice"><input type="checkbox" /> UI/UX</label>
+            </div>
+            <div class="field" style="margin-top: 14px;">
+              <label for="tools">사용 가능 툴</label>
+              <input id="tools" type="text" placeholder="Unity, Blender, Photoshop, Figma" />
+            </div>
+          </section>
+
+          <section class="step" data-title="작업물 검증" data-desc="포트폴리오와 본인 역할을 함께 등록합니다.">
+            <div class="upload-box">
+              대표 이미지, 영상 썸네일, 시연 GIF를 올리는 영역
+            </div>
+            <div class="field-grid" style="margin-top: 14px;">
+              <div class="field">
+                <label for="portfolioLink">외부 링크</label>
+                <input id="portfolioLink" type="url" placeholder="ArtStation, GitHub, YouTube" />
+              </div>
+              <div class="field">
+                <label for="myRole">작업물 내 역할</label>
+                <input id="myRole" type="text" placeholder="예: 캐릭터 원화, Unity 구현" />
+              </div>
+            </div>
+          </section>
+
+          <section class="step" data-title="협업 상태" data-desc="지금 어떤 방식으로 팀에 참여할 수 있는지 정합니다.">
+            <div class="choice-grid">
+              <label class="choice"><input name="status" type="radio" checked /> 바로 가능</label>
+              <label class="choice"><input name="status" type="radio" /> 일정 맞으면 가능</label>
+              <label class="choice"><input name="status" type="radio" /> 구경만</label>
+              <label class="choice"><input name="status" type="radio" /> 팀 보유 중</label>
+            </div>
+            <div class="field-grid" style="margin-top: 14px;">
+              <div class="field">
+                <label for="projectType">원하는 협업</label>
+                <select id="projectType">
+                  <option>졸업작품</option>
+                  <option>게임잼</option>
+                  <option>공모전</option>
+                  <option>포트폴리오 단기 프로젝트</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="hours">주당 가능 시간</label>
+                <select id="hours">
+                  <option>3시간 이하</option>
+                  <option>4-7시간</option>
+                  <option>8-12시간</option>
+                  <option>13시간 이상</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="step" data-title="맞춤 추천" data-desc="입력한 정보로 어울리는 팀을 먼저 보여줍니다.">
+            <div class="notice-card">
+              <h4>추천 결과 준비 완료</h4>
+              <p>대명캠 아트 인력과 성서캠 개발팀을 역할, 프로젝트 상태, 작업물 검증 기준으로 연결합니다.</p>
+            </div>
+            <div class="tag-row" style="margin-top: 14px;">
+              <span class="tag teal">2D 아트 필요</span>
+              <span class="tag blue">Unity 팀</span>
+              <span class="tag amber">졸업작품</span>
+              <span class="tag rose">영상 포트폴리오</span>
+            </div>
+          </section>
+        </form>
+
+        <div class="step-actions">
+          <button class="btn" id="prevBtn" type="button">이전</button>
+          <button class="btn teal" id="nextBtn" type="button">다음</button>
+        </div>
+      </aside>
+    </section>
+
+    <section id="projects" class="dashboard" aria-label="추천 프로젝트 대시보드">
+      <div class="dashboard-head">
+        <div>
+          <h2>추천 프로젝트</h2>
+          <p>프로필과 포트폴리오 기준으로 협업 가능성이 높은 팀을 먼저 보여줍니다.</p>
+        </div>
+        <button class="btn primary" type="button">프로젝트 등록</button>
+      </div>
+
+      <div class="filter-bar">
+        <input type="search" placeholder="프로젝트명, 역할, 툴 검색" />
+        <select>
+          <option>전체 캠퍼스</option>
+          <option>대명캠</option>
+          <option>성서캠</option>
+        </select>
+        <select>
+          <option>모든 역할</option>
+          <option>개발</option>
+          <option>2D 아트</option>
+          <option>애니메이션</option>
+        </select>
+        <select>
+          <option>모집중</option>
+          <option>진행중</option>
+          <option>완료</option>
+        </select>
+      </div>
+
+      <div class="content-grid">
+        <div>
+          <div class="section-title">
+            <h3>팀원 모집</h3>
+            <span>3개 프로젝트</span>
+          </div>
+          <div class="project-list">
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <div class="card-top">
+                  <div>
+                    <h4>리듬 액션 졸업작품 팀</h4>
+                    <p>Unity 프로토타입 완성. 캐릭터 애니메이션과 UI 아트가 필요합니다.</p>
+                  </div>
+                  <span class="tag teal">모집중</span>
+                </div>
+                <div class="tag-row">
+                  <span class="tag blue">Unity</span>
+                  <span class="tag rose">2D 애니메이션</span>
+                  <span class="tag amber">졸업작품</span>
+                </div>
+                <div class="card-foot">
+                  <span class="verify">기획서 · 프로토타입 확인됨</span>
+                  <button class="btn" type="button">지원하기</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <div class="card-top">
+                  <div>
+                    <h4>스토리 퍼즐 어드벤처</h4>
+                    <p>대명캠 콘셉트 아트 팀이 개발 파트너를 찾고 있습니다.</p>
+                  </div>
+                  <span class="tag teal">모집중</span>
+                </div>
+                <div class="tag-row">
+                  <span class="tag blue">프론트 개발</span>
+                  <span class="tag amber">게임잼</span>
+                  <span class="tag">Figma</span>
+                </div>
+                <div class="card-foot">
+                  <span class="verify">아트보드 · 시나리오 확인됨</span>
+                  <button class="btn" type="button">제안하기</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="project-card">
+              <div class="project-media" aria-hidden="true"></div>
+              <div class="project-body">
+                <div class="card-top">
+                  <div>
+                    <h4>협동 로그라이크 프로토타입</h4>
+                    <p>성서캠 개발팀 3명. 몬스터 디자인과 이펙트 작업자를 모집합니다.</p>
+                  </div>
+                  <span class="tag teal">모집중</span>
+                </div>
+                <div class="tag-row">
+                  <span class="tag blue">Godot</span>
+                  <span class="tag rose">캐릭터 디자인</span>
+                  <span class="tag">VFX</span>
+                </div>
+                <div class="card-foot">
+                  <span class="verify">팀 구성 · 일정 확인됨</span>
+                  <button class="btn" type="button">지원하기</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <aside class="side-stack">
+          <div class="section-title" id="portfolio">
+            <h3>추천 인재</h3>
+            <span>검증 프로필</span>
+          </div>
+          <div class="talent-list">
+            <article class="talent-card">
+              <div class="talent-top">
+                <div class="avatar" aria-hidden="true"></div>
+                <div>
+                  <h4>이서윤</h4>
+                  <p>대명캠 · 2D 애니메이션</p>
+                </div>
+              </div>
+              <div class="tag-row">
+                <span class="tag rose">Clip Studio</span>
+                <span class="tag">Spine</span>
+                <span class="tag teal">바로 가능</span>
+              </div>
+            </article>
+            <article class="talent-card">
+              <div class="talent-top">
+                <div class="avatar" aria-hidden="true"></div>
+                <div>
+                  <h4>박도현</h4>
+                  <p>성서캠 · Unity 개발</p>
+                </div>
+              </div>
+              <div class="tag-row">
+                <span class="tag blue">Unity</span>
+                <span class="tag">GitHub</span>
+                <span class="tag amber">공모전 선호</span>
+              </div>
+            </article>
+          </div>
+
+          <div class="notice-card" id="applications">
+            <h4>내 지원 현황</h4>
+            <p>지원하기와 제안하기를 누른 프로젝트는 이곳에서 진행 상태를 확인합니다. 매칭 정보는 프로젝트 추천과 인재 추천에 반영됩니다.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const steps = [...document.querySelectorAll(".step")];
+    const title = document.getElementById("stepTitle");
+    const desc = document.getElementById("stepDesc");
+    const badge = document.getElementById("stepBadge");
+    const progress = document.getElementById("progressBar");
+    const prev = document.getElementById("prevBtn");
+    const next = document.getElementById("nextBtn");
+    const dashboard = document.querySelector(".dashboard");
+    const onboarding = document.querySelector(".layout");
+    let current = 0;
+
+    function renderStep() {
+      steps.forEach((step, index) => step.classList.toggle("active", index === current));
+      const active = steps[current];
+      title.textContent = active.dataset.title;
+      desc.textContent = active.dataset.desc;
+      badge.textContent = `${current + 1}/5`;
+      progress.style.width = `${((current + 1) / steps.length) * 100}%`;
+      prev.disabled = current === 0;
+      prev.style.opacity = current === 0 ? "0.45" : "1";
+      next.textContent = current === steps.length - 1 ? "대시보드 보기" : "다음";
+    }
+
+    function showDashboard() {
+      onboarding.classList.add("hidden");
+      dashboard.classList.add("visible");
+      dashboard.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    prev.addEventListener("click", () => {
+      current = Math.max(0, current - 1);
+      renderStep();
+    });
+
+    next.addEventListener("click", () => {
+      if (current === steps.length - 1) {
+        showDashboard();
+        return;
+      }
+      current = Math.min(steps.length - 1, current + 1);
+      renderStep();
+    });
+
+    document.querySelectorAll("[data-jump]").forEach((button) => {
+      button.addEventListener("click", () => {
+        current = Number(button.dataset.jump);
+        renderStep();
+        document.querySelector(".onboarding-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    document.querySelectorAll("[data-show-dashboard]").forEach((button) => {
+      button.addEventListener("click", showDashboard);
+    });
+
+    renderStep();
+  </script>
+</body>
+</html>
