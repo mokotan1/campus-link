@@ -25,6 +25,9 @@ campus-link/
 
 | 폴더 | 명령어 | 목적 |
 | --- | --- | --- |
+| 레포 루트 | `docker compose up --build` | 프론트엔드/백엔드/DB를 한 번에 실행 |
+| 레포 루트 | `docker compose down` | Docker 개발환경 종료 |
+| 레포 루트 | `docker compose down -v` | Docker 개발환경 종료 및 DB 데이터 초기화 |
 | `frontend` | `npm install` | 프론트엔드 의존성 설치 |
 | `frontend` | `npm run dev` | 3000번 포트에서 Next.js 개발 서버 실행 |
 | `frontend` | `npm run build` | 프론트엔드 프로덕션 빌드 |
@@ -46,6 +49,24 @@ campus-link/
 6. 지원 현황 확인
 
 ## 로컬 개발
+
+### Docker Compose 권장
+
+팀원별 Node.js, JDK, PostgreSQL 버전 차이를 줄이기 위해 Docker Compose 실행을 권장합니다.
+
+```bash
+docker compose up --build
+```
+
+기본 주소:
+
+```txt
+frontend: http://localhost:3000
+backend:  http://localhost:8080
+db:       localhost:5432
+```
+
+자세한 내용은 `docs/docker-development.md`를 확인합니다.
 
 ### 프론트엔드
 
@@ -108,3 +129,4 @@ http://localhost:8080
 - DDD 가이드: `docs/architecture-ddd.md`
 - AI 작업 템플릿: `docs/ai-task-template.md`
 - 기능 단위 작업 목록: `docs/feature-slices.md`
+- Docker 개발환경: `docs/docker-development.md`

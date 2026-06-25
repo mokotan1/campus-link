@@ -30,6 +30,12 @@ gradlew.bat build
 ./gradlew build
 ```
 
+레포 루트에서 Docker로 실행할 수도 있습니다.
+
+```bash
+docker compose up backend db
+```
+
 ## 로컬 주소
 
 ```txt

@@ -21,6 +21,12 @@ npm run build
 npm run lint
 ```
 
+레포 루트에서 Docker로 실행할 수도 있습니다.
+
+```bash
+docker compose up frontend
+```
+
 ## 로컬 주소
 
 ```txt
