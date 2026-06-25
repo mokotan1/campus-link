@@ -22,7 +22,7 @@ jobs:
       workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - name: 코드 checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 변경 경로 필터
         id: filter
@@ -48,7 +48,7 @@ jobs:
         working-directory: frontend
     steps:
       - name: 코드 checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Node.js 24 설정
         uses: actions/setup-node@v4
@@ -81,7 +81,7 @@ jobs:
         working-directory: backend
     steps:
       - name: 코드 checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: JDK 21 설정
         uses: actions/setup-java@v4
