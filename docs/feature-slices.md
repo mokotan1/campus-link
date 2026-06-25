@@ -1,152 +1,152 @@
-# Campus Link Feature Slices
+# Campus Link 기능 슬라이스
 
-This file breaks the 3-week MVP into feature slices small enough for one developer or one AI agent to handle at a time.
+이 문서는 3주 MVP를 한 번에 한 개발자 또는 AI 에이전트가 처리할 수 있는 크기의 기능 슬라이스로 나눈 목록입니다.
 
-## Week 1
+## 1주차
 
-### Slice 1. Project Skeleton
+### 슬라이스 1. 프로젝트 골격
 
-Bounded context: Common
+바운디드 컨텍스트: Common
 
-Goal: Create frontend and backend base projects.
+목표: 프론트엔드·백엔드 기본 프로젝트를 만든다.
 
-Owner: Frontend + Backend
+담당: 프론트엔드 + 백엔드
 
-Done when:
+완료 조건:
 
-- Next.js app runs locally.
-- Spring Boot app runs locally.
-- README has local run commands.
+- Next.js 앱이 로컬에서 실행된다.
+- Spring Boot 앱이 로컬에서 실행된다.
+- README에 로컬 실행 명령이 있다.
 
-### Slice 2. Shared Domain Constants
+### 슬라이스 2. 공통 도메인 상수
 
-Bounded context: Common
+바운디드 컨텍스트: Common
 
-Goal: Define campus, role, project type, project status, and application status values.
+목표: 캠퍼스, 역할, 프로젝트 유형, 프로젝트 상태, 지원 상태 값을 정의한다.
 
-Owner: PM + Backend + Frontend
+담당: PM + 백엔드 + 프론트엔드
 
-Done when:
+완료 조건:
 
-- Frontend and backend use the same naming.
-- Dummy data uses the same values.
+- 프론트엔드와 백엔드가 같은 이름을 사용한다.
+- 더미 데이터가 같은 값을 사용한다.
 
-### Slice 3. Onboarding Basic Info
+### 슬라이스 3. 온보딩 기본 정보
 
-Bounded context: Profile
+바운디드 컨텍스트: Profile
 
-Goal: User enters campus, major, grade, and school email.
+목표: 사용자가 캠퍼스, 학과, 학년, 학교 이메일을 입력한다.
 
-Owner: Frontend
+담당: 프론트엔드
 
-Done when:
+완료 조건:
 
-- Onboarding step 1 matches the prototype.
-- Inputs are validated.
+- 온보딩 1단계가 프로토타입과 일치한다.
+- 입력값이 검증된다.
 
-## Week 2
+## 2주차
 
-### Slice 4. Role Selection
+### 슬라이스 4. 역할 선택
 
-Bounded context: Profile
+바운디드 컨텍스트: Profile
 
-Goal: User selects role tags and tool tags.
+목표: 사용자가 역할 태그와 툴 태그를 선택한다.
 
-Owner: Frontend
+담당: 프론트엔드
 
-Done when:
+완료 조건:
 
-- User can select multiple roles.
-- Tool input is saved in local/mock state.
+- 여러 역할을 선택할 수 있다.
+- 툴 입력이 로컬/목(mock) 상태에 저장된다.
 
-### Slice 5. Portfolio Registration
+### 슬라이스 5. 포트폴리오 등록
 
-Bounded context: Portfolio
+바운디드 컨텍스트: Portfolio
 
-Goal: User registers a portfolio item with link and role description.
+목표: 사용자가 링크와 역할 설명이 포함된 포트폴리오 항목을 등록한다.
 
-Owner: Frontend + Backend
+담당: 프론트엔드 + 백엔드
 
-Done when:
+완료 조건:
 
-- Portfolio form exists.
-- Portfolio API contract is defined.
+- 포트폴리오 입력 폼이 있다.
+- 포트폴리오 API 계약이 정의되어 있다.
 
-### Slice 6. Project Registration
+### 슬라이스 6. 프로젝트 등록
 
-Bounded context: Project
+바운디드 컨텍스트: Project
 
-Goal: User creates a project recruitment post.
+목표: 사용자가 프로젝트 모집 글을 작성한다.
 
-Owner: Backend + Frontend
+담당: 백엔드 + 프론트엔드
 
-Done when:
+완료 조건:
 
-- Project creation API exists.
-- Project registration screen exists.
+- 프로젝트 생성 API가 있다.
+- 프로젝트 등록 화면이 있다.
 
-### Slice 7. Project List and Filter
+### 슬라이스 7. 프로젝트 목록 및 필터
 
-Bounded context: Project
+바운디드 컨텍스트: Project
 
-Goal: User can browse and filter projects.
+목표: 사용자가 프로젝트를 탐색하고 필터링할 수 있다.
 
-Owner: Frontend
+담당: 프론트엔드
 
-Done when:
+완료 조건:
 
-- Search, campus, role, and status filters work with dummy data.
+- 검색, 캠퍼스, 역할, 상태 필터가 더미 데이터로 동작한다.
 
-## Week 3
+## 3주차
 
-### Slice 8. Apply to Project
+### 슬라이스 8. 프로젝트 지원
 
-Bounded context: Application
+바운디드 컨텍스트: Application
 
-Goal: User sends an application to a project.
+목표: 사용자가 프로젝트에 지원한다.
 
-Owner: Backend + Frontend
+담당: 백엔드 + 프론트엔드
 
-Done when:
+완료 조건:
 
-- Apply button creates an application.
-- Application starts in pending status.
+- 지원 버튼으로 지원(application)이 생성된다.
+- 지원 상태가 pending(대기)으로 시작한다.
 
-### Slice 9. Propose to Talent
+### 슬라이스 9. 인재에게 제안
 
-Bounded context: Application
+바운디드 컨텍스트: Application
 
-Goal: Project owner can propose collaboration to a user.
+목표: 프로젝트 소유자가 사용자에게 협업을 제안한다.
 
-Owner: Backend + Frontend
+담당: 백엔드 + 프론트엔드
 
-Done when:
+완료 조건:
 
-- Proposal action exists.
-- Proposal appears in application status.
+- 제안(proposal) 액션이 있다.
+- 제안이 지원 상태 화면에 표시된다.
 
-### Slice 10. Application Status Page
+### 슬라이스 10. 지원 현황 페이지
 
-Bounded context: Application
+바운디드 컨텍스트: Application
 
-Goal: User can see sent applications and received proposals.
+목표: 사용자가 보낸 지원과 받은 제안을 확인한다.
 
-Owner: Frontend
+담당: 프론트엔드
 
-Done when:
+완료 조건:
 
-- Pending, accepted, rejected, and canceled states are visible.
+- 대기, 수락, 거절, 취소 상태가 보인다.
 
-### Slice 11. Demo Data and QA
+### 슬라이스 11. 데모 데이터 및 QA
 
-Bounded context: Common
+바운디드 컨텍스트: Common
 
-Goal: Prepare demo-ready data and test the full flow.
+목표: 데모 가능한 데이터를 준비하고 전체 흐름을 테스트한다.
 
-Owner: Test/Data
+담당: 테스트/데이터
 
-Done when:
+완료 조건:
 
-- At least 10 projects exist.
-- At least 10 portfolios exist.
-- Demo scenario can be completed without errors.
+- 프로젝트가 최소 10개 있다.
+- 포트폴리오가 최소 10개 있다.
+- 데모 시나리오를 오류 없이 끝까지 진행할 수 있다.
