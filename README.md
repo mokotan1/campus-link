@@ -118,7 +118,7 @@ http://localhost:8080
 
 개발 전에 아래 문서를 먼저 확인합니다.
 
-- `docs/architecture-ddd.md`
+- `docs/architecture-ddd.md` (10장: MVP 품질 Tier)
 - `docs/ai-task-template.md`
 - `docs/feature-slices.md`
 

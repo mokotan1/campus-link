@@ -13,6 +13,10 @@
 
 <!-- Identity / Profile / Portfolio / Project / Application / Common -->
 
+## 품질 Tier (해당 시)
+
+<!-- 0 / 1 / 2 / 3 — architecture-ddd.md 10장 참고 -->
+
 ## CI 확인
 
 - [ ] GitHub Actions **CI 통과** (또는 Frontend/Backend 검사) 성공
