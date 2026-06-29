@@ -118,15 +118,34 @@ http://localhost:8080
 
 개발 전에 아래 문서를 먼저 확인합니다.
 
-- `docs/architecture-ddd.md`
+- `AGENTS.md`
+- `docs/architecture-ddd.md` (10장: MVP 품질 Tier)
+- `docs/SECURITY_GUIDELINES.md`
 - `docs/ai-task-template.md`
 - `docs/feature-slices.md`
+
+## 보안 지침
+
+Campus Link는 학교 이메일, 프로필, 포트폴리오 자료를 다루는 서비스이므로 인증, 권한 관리, 개인정보 보호, 파일 업로드 보안을 필수 기준으로 둡니다.
+
+주요 기준:
+
+- 학교 이메일 인증
+- 사용자별 프로필/프로젝트/지원 내역 권한 검증
+- 비밀번호 해시 저장
+- 서버 측 입력값 검증
+- 파일 업로드 확장자와 용량 제한
+- 환경변수와 API Key 커밋 금지
+- 개인정보와 인증 토큰 로그 기록 금지
+
+자세한 내용은 `docs/SECURITY_GUIDELINES.md`를 확인합니다.
 
 ## 현재 문서
 
 - HTML 프로토타입: `docs/campus-link-ui.html`
 - 기획 스펙: `docs/campus-link-spec.md`
 - DDD 가이드: `docs/architecture-ddd.md`
+- 보안 지침: `docs/SECURITY_GUIDELINES.md`
 - AI 작업 템플릿: `docs/ai-task-template.md`
 - 기능 단위 작업 목록: `docs/feature-slices.md`
 - Docker 개발환경: `docs/docker-development.md`

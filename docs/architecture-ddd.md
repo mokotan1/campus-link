@@ -268,6 +268,7 @@ REST API는 바운디드 컨텍스트를 따릅니다.
 ```txt
 기능:
 바운디드 컨텍스트:
+품질 Tier:
 사용자 목표:
 수정 허용 파일:
 수정 금지 파일:
@@ -301,3 +302,85 @@ REST API는 바운디드 컨텍스트를 따릅니다.
 6. Project 등록/목록/상세
 7. Application/Proposal 흐름
 8. 지원 현황 페이지
+
+## 10. MVP 품질 투자 가이드
+
+3주 MVP에서는 모든 코드에 같은 품질을 요구하지 않습니다. 기능마다 **품질 Tier**를 정하고, Tier에 맞는 최소 기준만 충족합니다.
+
+Tier는 **하한선**입니다. 상황에 따라 더 높은 품질을 적용해도 됩니다. 애매하면 한 단계 **올립니다**.
+
+### 10.1 품질 Tier
+
+| Tier | 대상 | 최소 기준 |
+| --- | --- | --- |
+| **0 — 필수** | BC 경계, DB 스키마, 인증, 공통 enum, API 에러 형식 | migration, FE/BE enum 동기화, 테스트 |
+| **1 — 높음** | MVP 사용자 여정 핵심 (생성·수정·상태 전환) | Tier 0 + API 계약 + integration/API test 1개 이상 |
+| **2 — 보통** | 목록·필터·조회 UI | 타입·린트 통과 + 수동 체크리스트 + empty state |
+| **3 — 낮음** | stub, 시드, 1회성 스크립트 | 동작 확인만 |
+
+Tier 판단 질문:
+
+- README MVP 6단계에 직접 연결되면 Tier 0~1
+- `campus-link-spec.md` 2차 기능(채팅, 알림, Storage 등)과 맞닿으면 infrastructure seam만 Tier 0 수준으로 준비
+- 3곳 이상 반복되기 전까지 FE 컴포넌트는 `shared/`로 올리지 않는다
+
+### 10.2 주차별 투자 초점
+
+**1주차 — 경계 고정 (Tier 0 중심)**
+
+- DB migration (Flyway 등) + `ddl-auto=validate`와 일치
+- FE/BE 공통 enum·상수 (Campus, Role, ProjectStatus, ApplicationStatus)
+- API 에러 형식 통일
+- FE design token + primitive UI (Button, Input, Tag 등)만 `shared/`
+
+**2주차 — 수직 슬라이스 (Tier 1 중심)**
+
+- 슬라이스 하나 = PR 하나 = BC 하나
+- domain 규칙 + API + (필요 시) migration + integration test 1개
+- PR 본문에 request/response JSON 예시
+
+**3주차 — 여정 연결 (Tier 1~2 + 데모)**
+
+- Application/Proposal 흐름 연결
+- 수동 E2E 시나리오 1개 (가입 → 온보딩 → 포트폴리오 → 지원 → 현황)
+- 시드 데이터: 프로젝트 10+, 포트폴리오 10+
+
+### 10.3 Tier별 PR 체크리스트
+
+**모든 PR**
+
+- [ ] 수정 BC가 하나인가
+- [ ] CI 통과
+- [ ] `feature-slices.md` 또는 spec과 완료 조건이 일치하는가
+
+**Tier 0~1 추가**
+
+- [ ] DB 변경 시 migration 포함
+- [ ] domain enum 변경 시 FE `shared/constants` 동기화
+- [ ] 성공·실패 케이스 각 1개 이상 (테스트 또는 PR 설명)
+
+**Tier 2 UI PR 추가**
+
+- [ ] `campus-link-ui.html`과 레이아웃·카피가 대략 일치
+- [ ] empty state 처리
+
+### 10.4 확장 seam (MVP에서 interface만)
+
+2차 기능 대비를 위해 infrastructure에만 아래 seam을 둡니다. domain/application은 구현체를 모릅니다.
+
+| Seam | MVP 구현 | 이후 교체 |
+| --- | --- | --- |
+| AuthProvider | JWT + 자체 User | Supabase Auth |
+| FileStorage | URL 문자열만 | Supabase Storage |
+| EmailVerification | stub (verified 처리) | 실제 메일 발송 |
+| NotificationPublisher | no-op | Realtime / push |
+
+### 10.5 의도적으로 약하게 가져갈 것
+
+- Generic BaseRepository / CRUD 추상화
+- 전역 상태 관리 대규모 도입
+- OpenAPI 전체 자동화 (슬라이스마다 PR 본문 JSON 예시로 시작)
+- 추천/매칭 엔진, 이벤트 버스, CQRS
+- UI 패턴 3회 반복 전 `shared/` 추출
+
+AI 작업 시 `ai-task-template.md`의 **품질 Tier** 필드를 반드시 채웁니다.
