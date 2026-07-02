@@ -73,3 +73,12 @@ src/main/java/com/campuslink/backend/
 ```
 
 `.env`는 커밋하지 않습니다.
+
+## 현재 백엔드 기초 작업
+
+- `/api/health` 헬스 체크 엔드포인트
+- 공통 API 응답 형식
+- 공통 예외 응답 형식
+- 로컬 프론트엔드(`localhost:3000`)용 CORS 설정
+- Flyway 기반 DB 마이그레이션 시작
+- `users`, `profiles`, `projects`, `portfolio_items`, `applications` 기본 테이블 초안
