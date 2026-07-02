@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppDataProvider } from "@/shared/lib/app-data-context";
+import { SiteHeader } from "@/shared/components/site-header";
 
 export const metadata: Metadata = {
   title: "Campus Link",
@@ -13,7 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <AppDataProvider>
+          <SiteHeader />
+          {children}
+        </AppDataProvider>
+      </body>
     </html>
   );
 }
