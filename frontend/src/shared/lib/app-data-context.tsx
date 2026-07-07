@@ -7,7 +7,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import { initialTalents } from "@/shared/constants";
 import type { Application, OnboardingProfile, Portfolio, Project, Talent } from "@/shared/types";
@@ -100,7 +102,7 @@ type ApplicationApiRecord = {
 
 type AppDataContextValue = {
   profile: OnboardingProfile;
-  setProfile: (profile: OnboardingProfile) => void;
+  setProfile: Dispatch<SetStateAction<OnboardingProfile>>;
   projects: Project[];
   addProject: (input: NewProjectInput) => Promise<void>;
   talents: Talent[];

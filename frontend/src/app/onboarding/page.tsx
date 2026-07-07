@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
 import { FileDropField } from "@/shared/components/file-drop-field";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
 import { useAppData } from "@/shared/lib/app-data-context";
+import { AuthPanel } from "@/features/auth/components/auth-panel";
+import { createClient } from "@/lib/supabase/client";
 import type { Campus } from "@/shared/types";
 
 const stepTitles = ["기본 정보", "역할 선택", "작업물 검증", "협업 상태", "맞춤 추천"];
@@ -20,7 +22,58 @@ const stepDescriptions = [
 export default function OnboardingPage() {
   const router = useRouter();
   const { profile, setProfile } = useAppData();
+  const supabase = useMemo(() => createClient(), []);
   const [step, setStep] = useState(0);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function syncSession() {
+      const { data } = await supabase.auth.getSession();
+
+      if (!active) {
+        return;
+      }
+
+      const email = data.session?.user.email ?? null;
+      setSessionEmail(email);
+
+      if (email) {
+        setProfile((current) => ({
+          ...current,
+          email,
+        }));
+      }
+
+      setLoadingSession(false);
+    }
+
+    void syncSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user.email ?? null;
+      setSessionEmail(email);
+      setLoadingSession(false);
+
+      if (email) {
+        setProfile((current) => ({
+          ...current,
+          email,
+        }));
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [setProfile, supabase]);
 
   function toggleRole(role: string) {
     setProfile({
@@ -29,9 +82,54 @@ export default function OnboardingPage() {
     });
   }
 
-  function finishOnboarding() {
-    setProfile({ ...profile, completed: true });
-    router.push("/projects");
+  async function finishOnboarding() {
+    setSaving(true);
+    setSaveMessage("프로필 저장 중입니다.");
+
+    try {
+      const collaborationStatus =
+        profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
+
+      const bioLines = [
+        profile.name ? `이름: ${profile.name}` : "",
+        profile.roles.length ? `역할: ${profile.roles.join(", ")}` : "",
+        profile.collaborationType ? `협업 유형: ${profile.collaborationType}` : "",
+        profile.weeklyHours ? `주당 가능 시간: ${profile.weeklyHours}` : "",
+        profile.availabilityStatus ? `현재 상태: ${profile.availabilityStatus}` : "",
+      ].filter(Boolean);
+
+      const response = await fetch("/api/profiles/me", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentId: "",
+          department: profile.department,
+          grade: profile.grade,
+          bio: bioLines.join("\n"),
+          techStack: profile.tools,
+          collaborationStatus,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message ?? "프로필 저장에 실패했습니다.");
+      }
+
+      setProfile({ ...profile, completed: true });
+      setSaveMessage("프로필 저장이 완료되었습니다. 프로젝트 화면으로 이동합니다.");
+      router.push("/projects");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "프로필 저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -43,6 +141,22 @@ export default function OnboardingPage() {
           5단계를 모두 마치면 자동으로 추천 프로젝트 페이지로 이동합니다.
         </p>
 
+        {loadingSession ? (
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6 text-sm font-bold text-slate-500 shadow-sm">
+            로그인 상태를 확인하고 있습니다.
+          </div>
+        ) : null}
+
+        {!loadingSession && !sessionEmail ? (
+          <div className="mt-8 grid gap-6">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+              온보딩 내용을 저장하려면 먼저 로그인 또는 회원가입이 필요합니다.
+            </div>
+            <AuthPanel />
+          </div>
+        ) : null}
+
+        {!loadingSession && sessionEmail ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
             <div>
@@ -56,6 +170,10 @@ export default function OnboardingPage() {
           </div>
           <div className="h-2 bg-slate-100" aria-hidden="true">
             <div className="h-full bg-teal-700 transition-all" style={{ width: `${((step + 1) / 5) * 100}%` }} />
+          </div>
+
+          <div className="border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-500">
+            현재 로그인 계정: <span className="text-slate-900">{sessionEmail}</span>
           </div>
 
           <form className="p-5" onSubmit={(event) => event.preventDefault()}>
@@ -110,8 +228,8 @@ export default function OnboardingPage() {
                     className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
                     placeholder="student@school.ac.kr"
                     type="email"
-                    value={profile.email}
-                    onChange={(event) => setProfile({ ...profile, email: event.target.value })}
+                    value={profile.email || sessionEmail || ""}
+                    readOnly
                   />
                 </label>
               </div>
@@ -243,6 +361,14 @@ export default function OnboardingPage() {
             )}
           </form>
 
+          {saveMessage ? (
+            <div className="px-5 pb-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                {saveMessage}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-between">
             <button
               className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-45"
@@ -253,20 +379,22 @@ export default function OnboardingPage() {
               이전
             </button>
             <button
-              className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800"
+              className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
+              disabled={saving}
               onClick={() => {
                 if (step === 4) {
-                  finishOnboarding();
+                  void finishOnboarding();
                   return;
                 }
                 setStep((current) => Math.min(4, current + 1));
               }}
             >
-              {step === 4 ? "프로젝트로 이동" : "다음"}
+              {step === 4 ? (saving ? "저장 중..." : "프로필 저장 후 이동") : "다음"}
             </button>
           </div>
         </div>
+        ) : null}
       </section>
     </main>
   );
