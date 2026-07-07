@@ -66,3 +66,31 @@ src/shared/constants      공용 프론트엔드 상수
 ```
 
 `.env.local`은 커밋하지 않습니다.
+
+Supabase로 전환할 경우 아래 값도 사용합니다.
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+초기 설치와 로컬 실행 순서는 [docs/supabase-setup.md](/Users/hansol/campus-link/docs/supabase-setup.md)를 참고합니다.
+
+## Auth 테스트 순서
+
+1. `frontend/.env.local`에 아래 값을 채웁니다.
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+2. Supabase SQL Editor에서 `frontend/supabase/migrations/20260706_auth_user_bridge.sql` 내용을 실행합니다.
+3. `frontend/` 폴더에서 `npm run dev`를 실행합니다.
+4. `http://localhost:3000/auth`를 엽니다.
+5. 새 이메일/비밀번호로 회원가입합니다.
+6. 현재 세션 이메일이 보이는지 확인합니다.
+7. 로그아웃 후 다시 로그인합니다.
+8. Supabase 대시보드의 `users`, `profiles` 테이블에서 데이터가 생성됐는지 확인합니다.
