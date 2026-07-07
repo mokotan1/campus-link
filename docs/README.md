@@ -13,11 +13,13 @@
 | `feature-slices.md` | 3주 MVP를 작은 기능 단위로 나눈 목록 |
 | `development-setup.md` | 로컬 개발 환경 설정 가이드 |
 | `docker-development.md` | Docker Compose 개발환경 실행 가이드 |
+| `supabase-setup.md` | Next.js + Supabase 기준 실행/전환 가이드 |
 
 ## 이 폴더를 읽는 순서
 
 - PM은 `campus-link-spec.md`부터 확인합니다.
 - 개발자는 `development-setup.md`부터 확인합니다.
+- Supabase 기준으로 바로 시작할 때는 `supabase-setup.md`를 먼저 확인해도 됩니다.
 - Docker로 시작하는 개발자는 `docker-development.md`를 확인합니다.
 - AI와 함께 개발할 때는 `architecture-ddd.md`와 `ai-task-template.md`를 먼저 확인합니다.
 - 스프린트 작업 분리는 `feature-slices.md`를 기준으로 합니다.

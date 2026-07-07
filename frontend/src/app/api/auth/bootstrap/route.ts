@@ -1,6 +1,5 @@
-import { NextResponse } from "next/server";
-
 import { bootstrapUser } from "@/features/auth/server/bootstrap-user";
+import { apiError, apiErrorFromUnknown, apiOk } from "@/lib/api/response";
 
 export async function POST(request: Request) {
   try {
@@ -9,18 +8,13 @@ export async function POST(request: Request) {
     const email = String(body.email ?? "").trim();
 
     if (!authUserId || !email) {
-      return NextResponse.json(
-        { success: false, message: "authUserId와 email이 필요합니다." },
-        { status: 400 }
-      );
+      return apiError("authUserId와 email이 필요합니다.", { status: 400 });
     }
 
     const result = await bootstrapUser({ authUserId, email });
 
-    return NextResponse.json({ success: true, data: result });
+    return apiOk(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "알 수 없는 오류";
-
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    return apiErrorFromUnknown(error);
   }
 }

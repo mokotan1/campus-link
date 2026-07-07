@@ -2,12 +2,21 @@
 
 Campus Link는 대명캠의 아트/영상/애니메이션 인력과 성서캠의 개발/기획 인력을 연결하는 캠퍼스 협업 매칭 서비스입니다.
 
+## 현재 개발 기준
+
+현재 MVP는 **Next.js + Supabase** 조합을 기준으로 진행합니다.
+
+- 화면: `frontend/`
+- API 라우트: `frontend/src/app/api`
+- 인증/DB: Supabase
+- 기존 `backend/` 폴더: Spring Boot 기초 실험 및 이전 구조 참고용
+
 ## 레포지토리 구조
 
 ```txt
 campus-link/
-  frontend/  Next.js, TypeScript, Tailwind CSS
-  backend/   Spring Boot, Java, Gradle
+  frontend/  Next.js, TypeScript, Tailwind CSS, API Route
+  backend/   Spring Boot, Java, Gradle (기초 실험/참고용)
   docs/      기획서, DDD 설계, AI 작업 규칙
 ```
 
@@ -15,8 +24,8 @@ campus-link/
 
 각 주요 폴더에는 개발자가 바로 볼 수 있는 README 라벨이 있습니다.
 
-- `frontend/README.md`: 프론트엔드 역할, 실행 스크립트, UI 코드 위치
-- `backend/README.md`: 백엔드 역할, Gradle 명령어, 도메인 패키지 맵
+- `frontend/README.md`: 프론트엔드 역할, 실행 스크립트, API Route 위치
+- `backend/README.md`: Spring Boot 실험 구조, 실행 스크립트, 남아 있는 기초 코드
 - `docs/README.md`: 기획/설계 문서의 위치와 사용 방법
 
 ## 스크립트 맵
@@ -25,15 +34,16 @@ campus-link/
 
 | 폴더 | 명령어 | 목적 |
 | --- | --- | --- |
-| 레포 루트 | `docker compose up --build` | 프론트엔드/백엔드/DB를 한 번에 실행 |
+| 레포 루트 | `docker compose up --build` | 프론트엔드/기존 백엔드/DB를 한 번에 실행 |
 | 레포 루트 | `docker compose down` | Docker 개발환경 종료 |
 | 레포 루트 | `docker compose down -v` | Docker 개발환경 종료 및 DB 데이터 초기화 |
 | `frontend` | `npm install` | 프론트엔드 의존성 설치 |
 | `frontend` | `npm run dev` | 3000번 포트에서 Next.js 개발 서버 실행 |
+| `frontend` | `npm run typecheck` | 타입 검사 |
 | `frontend` | `npm run build` | 프론트엔드 프로덕션 빌드 |
 | `frontend` | `npm run lint` | 프론트엔드 린트 검사 |
-| `backend` | `gradlew.bat bootRun` | Windows에서 Spring Boot 백엔드 실행 |
-| `backend` | `./gradlew bootRun` | macOS/Linux에서 Spring Boot 백엔드 실행 |
+| `backend` | `gradlew.bat bootRun` | Windows에서 Spring Boot 실험 서버 실행 |
+| `backend` | `./gradlew bootRun` | macOS/Linux에서 Spring Boot 실험 서버 실행 |
 | `backend` | `gradlew.bat test` | Windows에서 백엔드 테스트 실행 |
 | `backend` | `./gradlew test` | macOS/Linux에서 백엔드 테스트 실행 |
 
@@ -50,9 +60,27 @@ campus-link/
 
 ## 로컬 개발
 
-### Docker Compose 권장
+### 현재 권장 실행
 
-팀원별 Node.js, JDK, PostgreSQL 버전 차이를 줄이기 위해 Docker Compose 실행을 권장합니다.
+현재 MVP 기준으로는 `frontend` 개발 서버와 Supabase를 함께 사용하는 흐름이 가장 단순합니다.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+기본 주소:
+
+```txt
+app: http://localhost:3000
+```
+
+Supabase 설정은 `docs/supabase-setup.md`를 확인합니다.
+
+### Docker Compose 참고
+
+기존 Spring 실험 구조까지 같이 띄워볼 때는 Docker Compose를 사용할 수 있습니다.
 
 ```bash
 docker compose up --build
@@ -82,9 +110,9 @@ npm run dev
 http://localhost:3000
 ```
 
-### 백엔드
+### Spring Boot 참고 서버
 
-먼저 JDK 21을 설치해야 합니다.
+Spring Boot 쪽은 현재 기준 메인 구현 경로는 아니지만, 기초 구조와 로컬 DB/Flyway 실험용으로 남아 있습니다.
 
 ```bash
 cd backend
@@ -104,9 +132,17 @@ gradlew.bat bootRun
 http://localhost:8080
 ```
 
+## 현재 구현 범위
+
+- Supabase Auth 기반 회원가입 / 로그인
+- 프로필 저장 / 조회
+- 프로젝트 생성 / 목록 / 상세 조회
+- 포트폴리오 생성 / 조회
+- 지원하기 생성 / 내 지원 목록 조회
+
 ## 개발 규칙
 
-이 프로젝트는 도메인 주도 설계(DDD)를 기준으로 개발합니다. 하나의 작업은 가능하면 하나의 바운디드 컨텍스트만 수정해야 합니다.
+이 프로젝트는 도메인 주도 설계(DDD) 이름을 참고하되, 현재 MVP 구현은 Next.js 기능 단위 폴더와 API Route 중심으로 진행합니다.
 
 바운디드 컨텍스트:
 
@@ -130,3 +166,4 @@ http://localhost:8080
 - AI 작업 템플릿: `docs/ai-task-template.md`
 - 기능 단위 작업 목록: `docs/feature-slices.md`
 - Docker 개발환경: `docs/docker-development.md`
+- Supabase 전환/실행 가이드: `docs/supabase-setup.md`

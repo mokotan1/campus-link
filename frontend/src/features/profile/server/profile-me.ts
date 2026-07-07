@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 
 export type ProfileFormValues = {
   studentId: string;
@@ -21,35 +21,6 @@ export type ProfileRecord = {
   techStack: string;
   collaborationStatus: "OPEN" | "CLOSED";
 };
-
-async function getCurrentAppUser() {
-  const supabase = await createServerClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  const admin = createAdminClient();
-  const { data: appUser, error: appUserError } = await admin
-    .from("users")
-    .select("id, email")
-    .eq("auth_user_id", user.id)
-    .single();
-
-  if (appUserError) {
-    throw new Error(appUserError.message);
-  }
-
-  return appUser;
-}
 
 export async function getMyProfile() {
   const appUser = await getCurrentAppUser();
