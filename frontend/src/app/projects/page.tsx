@@ -34,10 +34,27 @@ export default function ProjectsPage() {
     });
   }, [campusFilter, projects, query, roleFilter, statusFilter]);
 
-  function handleApply(title: string, type: "지원" | "제안", meta: string) {
-    addApplication(title, type, meta);
-    setJustApplied(title);
-    window.setTimeout(() => setJustApplied((current) => (current === title ? null : current)), 2500);
+  async function handleApply(input: {
+    projectId?: number;
+    title: string;
+    type: "지원" | "제안";
+    meta: string;
+    targetRole?: string;
+  }) {
+    try {
+      await addApplication({
+        projectId: input.projectId,
+        title: input.title,
+        type: input.type,
+        meta: input.meta,
+        targetRole: input.targetRole,
+        message: `${input.title}에 ${input.targetRole ?? input.type}로 참여하고 싶습니다.`,
+      });
+      setJustApplied(input.title);
+      window.setTimeout(() => setJustApplied((current) => (current === input.title ? null : current)), 2500);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "지원 처리에 실패했습니다.");
+    }
   }
 
   return (
@@ -153,7 +170,15 @@ export default function ProjectsPage() {
                             <button
                               className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800"
                               type="button"
-                              onClick={() => handleApply(project.title, project.action === "지원하기" ? "지원" : "제안", `${project.role} 역할 · ${project.campus}`)}
+                              onClick={() =>
+                                handleApply({
+                                  projectId: project.id,
+                                  title: project.title,
+                                  type: project.action === "지원하기" ? "지원" : "제안",
+                                  meta: `${project.role} 역할 · ${project.campus}`,
+                                  targetRole: project.role,
+                                })
+                              }
                             >
                               {project.action}
                             </button>
@@ -201,7 +226,13 @@ export default function ProjectsPage() {
                           <button
                             className="min-h-10 rounded-lg bg-slate-950 px-4 text-sm font-extrabold text-white transition hover:bg-slate-800"
                             type="button"
-                            onClick={() => handleApply(talent.name, "제안", `${talent.role} · ${talent.availability}`)}
+                            onClick={() =>
+                              handleApply({
+                                title: talent.name,
+                                type: "제안",
+                                meta: `${talent.role} · ${talent.availability}`,
+                              })
+                            }
                           >
                             제안하기
                           </button>

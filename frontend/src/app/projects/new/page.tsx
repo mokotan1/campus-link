@@ -25,25 +25,29 @@ export default function NewProjectPage() {
 
   const isValid = title.trim().length > 0 && summary.trim().length > 0 && content.trim().length > 0;
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!isValid) return;
 
-    addProject({
-      title: title.trim(),
-      campus,
-      role,
-      status,
-      summary: summary.trim(),
-      content: content.trim(),
-      tagLabels: tagsInput
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      coverImageName: coverFileName,
-    });
+    try {
+      await addProject({
+        title: title.trim(),
+        campus,
+        role,
+        status,
+        summary: summary.trim(),
+        content: content.trim(),
+        tagLabels: tagsInput
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        coverImageName: coverFileName,
+      });
 
-    router.push("/projects");
+      router.push("/projects");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "프로젝트 등록에 실패했습니다.");
+    }
   }
 
   return (
