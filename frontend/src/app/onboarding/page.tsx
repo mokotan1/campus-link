@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
-import { useAppData } from "@/shared/lib/app-data-context";
+import { defaultOnboardingProfile, useAppData } from "@/shared/lib/app-data-context";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
 import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
 import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
@@ -66,6 +66,8 @@ export default function OnboardingPage() {
           ...current,
           email,
         }));
+      } else {
+        setProfile(defaultOnboardingProfile);
       }
 
       setLoadingSession(false);
@@ -83,6 +85,8 @@ export default function OnboardingPage() {
           ...current,
           email,
         }));
+      } else {
+        setProfile(defaultOnboardingProfile);
       }
     };
 
@@ -115,20 +119,19 @@ export default function OnboardingPage() {
         }
 
         setStep(data.onboardingStep);
-        setProfile((current) => ({
-          ...current,
-          name: data.displayName || current.name,
-          campus: (data.campus || current.campus) as Campus,
-          department: data.department || current.department,
-          grade: data.grade || current.grade,
+        setProfile({
+          name: data.displayName,
+          campus: data.campus as Campus,
+          department: data.department,
+          grade: data.grade,
           email: data.email || email || "",
-          roles: data.roleTags.length ? data.roleTags : current.roles,
-          tools: data.techStack || current.tools,
-          availabilityStatus: data.availabilityStatus || current.availabilityStatus,
-          collaborationType: data.collaborationType || current.collaborationType,
-          weeklyHours: data.weeklyHours || current.weeklyHours,
+          roles: data.roleTags,
+          tools: data.techStack,
+          availabilityStatus: data.availabilityStatus,
+          collaborationType: data.collaborationType,
+          weeklyHours: data.weeklyHours,
           completed: data.onboardingCompleted,
-        }));
+        });
 
         try {
           const portfolios = await listMyPortfoliosClient();
@@ -180,22 +183,6 @@ export default function OnboardingPage() {
       const collaborationStatus =
         profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
 
-      await updateMyProfileClient({
-        displayName: profile.name,
-        campus: profile.campus,
-        studentId: existingProfile.studentId,
-        department: profile.department,
-        grade: profile.grade,
-        bio: "",
-        roleTags: profile.roles,
-        techStack: profile.tools,
-        availabilityStatus: profile.availabilityStatus,
-        collaborationType: profile.collaborationType,
-        weeklyHours: profile.weeklyHours,
-        collaborationStatus,
-        onboardingCompleted: true,
-      });
-
       const trimmedExternalUrl = portfolioExternalUrl.trim();
 
       if (trimmedExternalUrl) {
@@ -212,6 +199,22 @@ export default function OnboardingPage() {
             .filter(Boolean),
         });
       }
+
+      await updateMyProfileClient({
+        displayName: profile.name,
+        campus: profile.campus,
+        studentId: existingProfile.studentId,
+        department: profile.department,
+        grade: profile.grade,
+        bio: existingProfile.bio,
+        roleTags: profile.roles,
+        techStack: profile.tools,
+        availabilityStatus: profile.availabilityStatus,
+        collaborationType: profile.collaborationType,
+        weeklyHours: profile.weeklyHours,
+        collaborationStatus,
+        onboardingCompleted: true,
+      });
 
       setProfile({ ...profile, completed: true });
       setSaveMessage("프로필 저장이 완료되었습니다. 프로젝트 화면으로 이동합니다.");

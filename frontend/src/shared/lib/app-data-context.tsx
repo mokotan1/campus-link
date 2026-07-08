@@ -14,7 +14,7 @@ import {
 import { initialTalents } from "@/shared/constants";
 import type { Application, OnboardingProfile, Portfolio, Project, Talent } from "@/shared/types";
 
-const defaultProfile: OnboardingProfile = {
+export const defaultOnboardingProfile: OnboardingProfile = {
   name: "",
   campus: "대명캠",
   department: "",
@@ -200,7 +200,7 @@ async function readApiResponse<T>(response: Response) {
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<OnboardingProfile>(defaultProfile);
+  const [profile, setProfile] = useState<OnboardingProfile>(defaultOnboardingProfile);
   const [projects, setProjects] = useState<Project[]>([]);
   const [talents] = useState<Talent[]>(initialTalents);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);

@@ -155,6 +155,20 @@ export function AuthPanel() {
       if (!session?.user.email) {
         setProfile(emptyProfileState());
         setProfileMessage(initialProfileMessage());
+        return;
+      }
+
+      try {
+        await loadProfile();
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setProfileMessage({
+          tone: "error",
+          text: error instanceof Error ? error.message : "프로필을 불러오지 못했습니다.",
+        });
       }
     };
 
@@ -271,20 +285,22 @@ export function AuthPanel() {
     });
 
     try {
+      const existingProfile = await getMyProfileClient();
+
       const data = await updateMyProfileClient({
-        displayName: "",
-        campus: "",
+        displayName: existingProfile.displayName,
+        campus: existingProfile.campus,
         studentId: profile.studentId,
         department: profile.department,
         grade: profile.grade,
         bio: profile.bio,
-        roleTags: [],
+        roleTags: existingProfile.roleTags,
         techStack: profile.techStack,
-        availabilityStatus: "",
-        collaborationType: "",
-        weeklyHours: "",
+        availabilityStatus: existingProfile.availabilityStatus,
+        collaborationType: existingProfile.collaborationType,
+        weeklyHours: existingProfile.weeklyHours,
         collaborationStatus: profile.collaborationStatus,
-        onboardingCompleted: false,
+        onboardingCompleted: existingProfile.onboardingCompleted,
       });
 
       setProfile({
