@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/client";
 
+type AuthStateChangeHandler = Parameters<
+  ReturnType<typeof createClient>["auth"]["onAuthStateChange"]
+>[0];
+
 type Mode = "sign-up" | "sign-in";
 
 type AuthMessageTone = "neutral" | "success" | "error";
@@ -62,13 +66,9 @@ function messageClassName(tone: AuthMessageTone) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
-async function bootstrapAppUser(authUserId: string, email: string) {
+async function bootstrapAppUser() {
   const response = await fetch("/api/auth/bootstrap", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ authUserId, email }),
   });
 
   const payload = (await response.json()) as {
@@ -152,16 +152,18 @@ export function AuthPanel() {
 
     void syncSession();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const onAuthStateChange: AuthStateChangeHandler = async (_event, session) => {
       setSessionEmail(session?.user.email ?? null);
 
       if (!session?.user.email) {
         setProfile(emptyProfileState());
         setProfileMessage(initialProfileMessage());
       }
-    });
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(onAuthStateChange);
 
     return () => {
       active = false;
@@ -186,10 +188,7 @@ export function AuthPanel() {
           return;
         }
 
-        const authUserId = data.user?.id;
-        const authEmail = data.user?.email;
-
-        if (!authUserId || !authEmail) {
+        if (!data.user?.email) {
           setMessage({
             tone: "error",
             text: "회원가입은 되었지만 사용자 정보를 읽지 못했습니다.",
@@ -197,22 +196,23 @@ export function AuthPanel() {
           return;
         }
 
-        await bootstrapAppUser(authUserId, authEmail);
-
         if (data.session) {
+          await bootstrapAppUser();
           await loadProfile();
+          setMessage({
+            tone: "success",
+            text: "회원가입과 기본 프로필 생성이 완료되었습니다.",
+          });
+        } else {
+          setMessage({
+            tone: "success",
+            text: "회원가입은 완료됐지만 현재 세션이 없습니다. 이메일 인증 설정을 확인해주세요.",
+          });
         }
-
-        setMessage({
-          tone: "success",
-          text: data.session
-            ? "회원가입과 기본 프로필 생성이 완료되었습니다."
-            : "회원가입은 완료됐지만 현재 세션이 없습니다. 이메일 인증 설정을 확인해주세요.",
-        });
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -222,17 +222,16 @@ export function AuthPanel() {
         return;
       }
 
-      const authUserId = data.user.id;
-      const authEmail = data.user.email;
-
-      if (authEmail) {
-        await bootstrapAppUser(authUserId, authEmail);
-      }
-
+      await bootstrapAppUser();
       await loadProfile();
       setMessage({
         tone: "success",
         text: "로그인 성공. 온보딩과 프로젝트 화면으로 이동할 수 있습니다.",
+      });
+    } catch (error) {
+      setMessage({
+        tone: "error",
+        text: error instanceof Error ? error.message : "인증 처리에 실패했습니다.",
       });
     } finally {
       setPending(false);
