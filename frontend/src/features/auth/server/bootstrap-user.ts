@@ -55,16 +55,25 @@ export async function bootstrapUser({ authUserId, email, emailVerified }: Bootst
     }
   }
 
-  const { error: profileError } = await supabase.from("profiles").upsert(
-    {
+  const { data: existingProfile, error: existingProfileError } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", appUserId)
+    .maybeSingle();
+
+  if (existingProfileError) {
+    throw new Error(existingProfileError.message);
+  }
+
+  if (!existingProfile) {
+    const { error: profileError } = await supabase.from("profiles").insert({
       user_id: appUserId,
       collaboration_status: "OPEN",
-    },
-    { onConflict: "user_id" }
-  );
+    });
 
-  if (profileError) {
-    throw new Error(profileError.message);
+    if (profileError) {
+      throw new Error(profileError.message);
+    }
   }
 
   return { appUserId };

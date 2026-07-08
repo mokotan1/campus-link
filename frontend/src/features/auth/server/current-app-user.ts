@@ -29,10 +29,14 @@ export async function getCurrentAppUser() {
     .from("users")
     .select("id, email, name")
     .eq("auth_user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (appUserError) {
     throw new Error(appUserError.message);
+  }
+
+  if (!appUser) {
+    return null;
   }
 
   return appUser satisfies AppUserRecord;
