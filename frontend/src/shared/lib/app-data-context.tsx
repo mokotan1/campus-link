@@ -206,44 +206,59 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
 
-  const loadProjects = useCallback(async () => {
-    try {
-      const records = await readApiResponse<ProjectApiRecord[]>(
-        await fetch("/api/projects", { cache: "no-store" })
-      );
-      setProjects(records.map(mapProjectRecord));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
-
-  const loadPortfolios = useCallback(async () => {
-    try {
-      const records = await readApiResponse<PortfolioApiRecord[]>(
-        await fetch("/api/portfolios", { cache: "no-store" })
-      );
-      setPortfolios(records.map(mapPortfolioRecord));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
-
-  const loadApplications = useCallback(async () => {
-    try {
-      const records = await readApiResponse<ApplicationApiRecord[]>(
-        await fetch("/api/applications/me", { cache: "no-store" })
-      );
-      setApplications(records.map(mapApplicationRecord));
-    } catch (error) {
-      console.error(error);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadProjects();
-    void loadPortfolios();
-    void loadApplications();
-  }, [loadApplications, loadPortfolios, loadProjects]);
+    let active = true;
+
+    async function loadInitialProjects() {
+      try {
+        const records = await readApiResponse<ProjectApiRecord[]>(
+          await fetch("/api/projects", { cache: "no-store" })
+        );
+
+        if (active) {
+          setProjects(records.map(mapProjectRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadInitialPortfolios() {
+      try {
+        const records = await readApiResponse<PortfolioApiRecord[]>(
+          await fetch("/api/portfolios", { cache: "no-store" })
+        );
+
+        if (active) {
+          setPortfolios(records.map(mapPortfolioRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadInitialApplications() {
+      try {
+        const records = await readApiResponse<ApplicationApiRecord[]>(
+          await fetch("/api/applications/me", { cache: "no-store" })
+        );
+
+        if (active) {
+          setApplications(records.map(mapApplicationRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    void loadInitialProjects();
+    void loadInitialPortfolios();
+    void loadInitialApplications();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const addProject = useCallback(async (input: NewProjectInput) => {
     const record = await readApiResponse<ProjectApiRecord>(
