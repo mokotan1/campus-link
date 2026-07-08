@@ -1,17 +1,27 @@
 import { bootstrapUser } from "@/features/auth/server/bootstrap-user";
-import { apiError, apiErrorFromUnknown, apiOk } from "@/lib/api/response";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const body = await request.json();
-    const authUserId = String(body.authUserId ?? "").trim();
-    const email = String(body.email ?? "").trim();
+    const supabase = await createServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
-    if (!authUserId || !email) {
-      return apiError("authUserId와 email이 필요합니다.", { status: 400 });
+    if (error) {
+      throw new Error(error.message);
     }
 
-    const result = await bootstrapUser({ authUserId, email });
+    if (!user?.email) {
+      return apiUnauthorized();
+    }
+
+    const result = await bootstrapUser({
+      authUserId: user.id,
+      email: user.email,
+    });
 
     return apiOk(result);
   } catch (error) {
