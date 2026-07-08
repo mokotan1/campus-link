@@ -19,22 +19,30 @@ export default function NewPortfolioPage() {
   const [link, setLink] = useState("");
   const [coverFileName, setCoverFileName] = useState<string | undefined>(undefined);
 
-  const isValid = title.trim().length > 0 && summary.trim().length > 0 && content.trim().length > 0;
+  const isValid =
+    title.trim().length > 0 &&
+    summary.trim().length > 0 &&
+    content.trim().length > 0 &&
+    link.trim().length > 0;
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!isValid) return;
 
-    addPortfolio({
-      title: title.trim(),
-      role,
-      summary: summary.trim(),
-      content: content.trim(),
-      link: link.trim() || undefined,
-      coverImageName: coverFileName,
-    });
+    try {
+      await addPortfolio({
+        title: title.trim(),
+        role,
+        summary: summary.trim(),
+        content: content.trim(),
+        link: link.trim() || undefined,
+        coverImageName: coverFileName,
+      });
 
-    router.push("/projects");
+      router.push("/projects");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "포트폴리오 등록에 실패했습니다.");
+    }
   }
 
   return (

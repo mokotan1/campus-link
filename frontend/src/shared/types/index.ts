@@ -1,8 +1,8 @@
 export type TagTone = "default" | "teal" | "blue" | "amber" | "rose" | "green";
 
-export type Campus = "대명캠" | "성서캠";
+export type Campus = string;
 
-export type ProjectStatus = "모집중" | "진행중" | "완료";
+export type ProjectStatus = string;
 
 export type Project = {
   id: number;
@@ -29,7 +29,7 @@ export type Talent = {
   portfolio: string;
 };
 
-export type ApplicationStatus = "대기" | "수락" | "거절" | "취소";
+export type ApplicationStatus = string;
 
 export type Application = {
   id: number;
