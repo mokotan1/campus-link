@@ -113,26 +113,25 @@ export default function OnboardingPage() {
       const collaborationStatus =
         profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
 
-      const bioLines = [
-        profile.name ? `이름: ${profile.name}` : "",
-        profile.roles.length ? `역할: ${profile.roles.join(", ")}` : "",
-        profile.collaborationType ? `협업 유형: ${profile.collaborationType}` : "",
-        profile.weeklyHours ? `주당 가능 시간: ${profile.weeklyHours}` : "",
-        profile.availabilityStatus ? `현재 상태: ${profile.availabilityStatus}` : "",
-      ].filter(Boolean);
-
       const response = await fetch("/api/profiles/me", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          displayName: profile.name,
+          campus: profile.campus,
           studentId: profilePayload.data.studentId,
           department: profile.department,
           grade: profile.grade,
-          bio: bioLines.join("\n"),
+          bio: "",
+          roleTags: profile.roles,
           techStack: profile.tools,
+          availabilityStatus: profile.availabilityStatus,
+          collaborationType: profile.collaborationType,
+          weeklyHours: profile.weeklyHours,
           collaborationStatus,
+          onboardingCompleted: true,
         }),
       });
 

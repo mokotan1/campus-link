@@ -9,18 +9,35 @@ import {
   apiUnauthorized,
 } from "@/lib/api/response";
 
+function parseRoleTags(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => String(item ?? "").trim())
+    .filter(Boolean);
+}
+
 function parseProfilePayload(body: unknown): ProfileFormValues {
   const payload = (body ?? {}) as Record<string, unknown>;
   const collaborationStatus =
     payload.collaborationStatus === "CLOSED" ? "CLOSED" : "OPEN";
 
   return {
+    displayName: String(payload.displayName ?? "").trim(),
+    campus: String(payload.campus ?? "").trim(),
     studentId: String(payload.studentId ?? "").trim(),
     department: String(payload.department ?? "").trim(),
     grade: String(payload.grade ?? "").trim(),
     bio: String(payload.bio ?? "").trim(),
+    roleTags: parseRoleTags(payload.roleTags),
     techStack: String(payload.techStack ?? "").trim(),
+    availabilityStatus: String(payload.availabilityStatus ?? "").trim(),
+    collaborationType: String(payload.collaborationType ?? "").trim(),
+    weeklyHours: String(payload.weeklyHours ?? "").trim(),
     collaborationStatus,
+    onboardingCompleted: payload.onboardingCompleted === true,
   };
 }
 
