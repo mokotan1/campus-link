@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
@@ -8,6 +8,7 @@ import { defaultOnboardingProfile, useAppData } from "@/shared/lib/app-data-cont
 import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
 import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
+import type { ProfileRecord } from "@/features/profile/types";
 import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
 import { createClient } from "@/lib/supabase/client";
 import type { Campus } from "@/shared/types";
@@ -35,6 +36,22 @@ function parsePortfolioThumbnail(description: string) {
   return "";
 }
 
+function mapProfileRecordToOnboardingState(data: ProfileRecord, fallbackEmail: string) {
+  return {
+    name: data.displayName,
+    campus: (data.campus || "대명캠") as Campus,
+    department: data.department,
+    grade: data.grade || "1학년",
+    email: data.email || fallbackEmail,
+    roles: data.roleTags,
+    tools: data.techStack,
+    availabilityStatus: data.availabilityStatus || "바로 가능",
+    collaborationType: data.collaborationType || "졸업작품",
+    weeklyHours: data.weeklyHours || "4-7시간",
+    completed: data.onboardingCompleted,
+  };
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { profile, setProfile } = useAppData();
@@ -45,10 +62,33 @@ export default function OnboardingPage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
-  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
+  const [profileLoadMessage, setProfileLoadMessage] = useState("");
   const [portfolioExternalUrl, setPortfolioExternalUrl] = useState("");
   const [portfolioThumbnailUrl, setPortfolioThumbnailUrl] = useState("");
   const [portfolioRoleInWork, setPortfolioRoleInWork] = useState("");
+
+  const resetLocalOnboardingState = useCallback(() => {
+    setStep(0);
+    setSaveMessage("");
+    setProfileLoadMessage("");
+    setPortfolioExternalUrl("");
+    setPortfolioThumbnailUrl("");
+    setPortfolioRoleInWork("");
+    setProfile(defaultOnboardingProfile);
+  }, [setProfile]);
+
+  const prepareForSignedInUser = useCallback(
+    (email: string) => {
+      setStep(0);
+      setSaveMessage("");
+      setProfileLoadMessage("");
+      setPortfolioExternalUrl("");
+      setPortfolioThumbnailUrl("");
+      setPortfolioRoleInWork("");
+      setProfile({ ...defaultOnboardingProfile, email });
+    },
+    [setProfile],
+  );
 
   useEffect(() => {
     let active = true;
@@ -64,12 +104,9 @@ export default function OnboardingPage() {
       setSessionEmail(email);
 
       if (email) {
-        setProfile((current) => ({
-          ...current,
-          email,
-        }));
+        prepareForSignedInUser(email);
       } else {
-        setProfile(defaultOnboardingProfile);
+        resetLocalOnboardingState();
       }
 
       setLoadingSession(false);
@@ -83,12 +120,9 @@ export default function OnboardingPage() {
       setLoadingSession(false);
 
       if (email) {
-        setProfile((current) => ({
-          ...current,
-          email,
-        }));
+        prepareForSignedInUser(email);
       } else {
-        setProfile(defaultOnboardingProfile);
+        resetLocalOnboardingState();
       }
     };
 
@@ -100,7 +134,7 @@ export default function OnboardingPage() {
       active = false;
       subscription.unsubscribe();
     };
-  }, [setProfile, supabase]);
+  }, [prepareForSignedInUser, resetLocalOnboardingState, setProfile, supabase]);
 
   useEffect(() => {
     if (!sessionEmail) {
@@ -111,7 +145,7 @@ export default function OnboardingPage() {
 
     async function loadSavedProfile() {
       setLoadingProfile(true);
-      setProfileLoadError(null);
+      setProfileLoadMessage("");
       const email = sessionEmail;
 
       try {
@@ -129,19 +163,7 @@ export default function OnboardingPage() {
         }
 
         setStep(data.onboardingStep);
-        setProfile({
-          name: data.displayName,
-          campus: data.campus as Campus,
-          department: data.department,
-          grade: data.grade,
-          email: data.email || email || "",
-          roles: data.roleTags,
-          tools: data.techStack,
-          availabilityStatus: data.availabilityStatus,
-          collaborationType: data.collaborationType,
-          weeklyHours: data.weeklyHours,
-          completed: data.onboardingCompleted,
-        });
+        setProfile(mapProfileRecordToOnboardingState(data, email || ""));
 
         try {
           const portfolios = await listMyPortfoliosClient();
@@ -160,14 +182,14 @@ export default function OnboardingPage() {
         } catch {
           // Portfolio hydration is optional for resume.
         }
-      } catch (error) {
+      } catch {
         if (!active) {
           return;
         }
 
-        setProfileLoadError(
-          error instanceof Error ? error.message : "저장된 프로필을 불러오지 못했습니다.",
-        );
+        setProfileLoadMessage("저장된 프로필을 불러오지 못했습니다. 기본값으로 온보딩을 시작합니다.");
+        setStep(0);
+        setProfile({ ...defaultOnboardingProfile, email: email || "" });
       } finally {
         if (active) {
           setLoadingProfile(false);
@@ -266,13 +288,13 @@ export default function OnboardingPage() {
           </div>
         ) : null}
 
-        {!loadingSession && !loadingProfile && sessionEmail && profileLoadError ? (
-          <div className="mt-8 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
-            {profileLoadError}
+        {!loadingSession && !loadingProfile && sessionEmail && profileLoadMessage ? (
+          <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-600">
+            {profileLoadMessage}
           </div>
         ) : null}
 
-        {!loadingSession && !loadingProfile && sessionEmail && !profileLoadError ? (
+        {!loadingSession && !loadingProfile && sessionEmail ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
             <div>
@@ -509,7 +531,7 @@ export default function OnboardingPage() {
             <button
               className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
-              disabled={saving}
+              disabled={saving || loadingProfile}
               onClick={() => {
                 if (step === 4) {
                   void finishOnboarding();

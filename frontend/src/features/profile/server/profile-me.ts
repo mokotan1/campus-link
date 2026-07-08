@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isSchoolEmail } from "@/features/auth/lib/school-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 
@@ -101,7 +102,7 @@ function computeProfileReadiness(
   );
 
   const readiness: ProfileReadiness = {
-    hasSchoolEmail: email.endsWith("@school.ac.kr"),
+    hasSchoolEmail: isSchoolEmail(email),
     hasBasicInfo: Boolean(campus && profile.department && profile.grade),
     hasRoleTags: (profile.role_tags ?? []).length > 0,
     hasPortfolio,
