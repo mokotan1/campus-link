@@ -58,9 +58,10 @@ function resolveOnboardingStep(profile: {
   collaborationType: string;
   weeklyHours: string;
   onboardingCompleted: boolean;
-}) {
+}, readiness: Pick<ProfileReadiness, "hasPortfolio" | "hasRoleInWork">) {
   if (!profile.campus || !profile.department || !profile.grade) return 0;
   if (!profile.roleTags.length) return 1;
+  if (!readiness.hasPortfolio || !readiness.hasRoleInWork) return 2;
   if (
     !profile.availabilityStatus ||
     !profile.collaborationType ||
@@ -148,7 +149,7 @@ function mapProfileRow(
 
   return {
     ...mapped,
-    onboardingStep: resolveOnboardingStep(mapped),
+    onboardingStep: resolveOnboardingStep(mapped, readiness),
     readiness,
   };
 }

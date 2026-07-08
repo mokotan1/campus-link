@@ -77,6 +77,10 @@ export function validatePortfolioPayload(values: PortfolioFormValues) {
     throw new Error("포트폴리오 외부 링크는 필수입니다.");
   }
 
+  if (!values.roleInWork) {
+    throw new Error("작업물 내 역할은 필수입니다.");
+  }
+
   try {
     const url = new URL(values.externalUrl);
 

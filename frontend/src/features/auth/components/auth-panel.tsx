@@ -355,7 +355,7 @@ export function AuthPanel() {
             <input
               className="rounded-lg border border-slate-300 bg-white px-3 py-3 font-medium outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
               type="email"
-              placeholder="student@school.ac.kr"
+              placeholder="student@kmu.ac.kr"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required

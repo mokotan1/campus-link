@@ -1,10 +1,10 @@
 # Auth & Onboarding Manual QA Checklist
 
-> MVP demo domain: `school.ac.kr`. Replace this with the real university domain before production.
+> School email domain: `kmu.ac.kr`.
 
 ## Sign Up
 
-- [ ] Sign up with a valid school email (`student@school.ac.kr`).
+- [ ] Sign up with a valid school email (`student@kmu.ac.kr`).
 - [ ] Verify Supabase creates the auth user and, when a session is returned, `/api/auth/bootstrap` creates the app user and profile without sending client-provided identity.
 - [ ] Sign up when Supabase requires email confirmation and verify:
   - [ ] No bootstrap call is made without an active session.

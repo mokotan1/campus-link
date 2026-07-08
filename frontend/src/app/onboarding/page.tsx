@@ -222,21 +222,25 @@ export default function OnboardingPage() {
         profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
 
       const trimmedExternalUrl = portfolioExternalUrl.trim();
+      const trimmedRoleInWork = portfolioRoleInWork.trim();
 
-      if (trimmedExternalUrl) {
-        await savePortfolioClient({
-          title: profile.name.trim() || "대표 작업물",
-          description: portfolioThumbnailUrl.trim()
-            ? `썸네일: ${portfolioThumbnailUrl.trim()}`
-            : "",
-          externalUrl: trimmedExternalUrl,
-          roleInWork: portfolioRoleInWork.trim(),
-          tools: profile.tools
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-        });
+      if (!trimmedExternalUrl || !trimmedRoleInWork) {
+        setStep(2);
+        throw new Error("포트폴리오 링크와 작업물 내 역할을 입력해야 온보딩을 완료할 수 있습니다.");
       }
+
+      await savePortfolioClient({
+        title: profile.name.trim() || "대표 작업물",
+        description: portfolioThumbnailUrl.trim()
+          ? `썸네일: ${portfolioThumbnailUrl.trim()}`
+          : "",
+        externalUrl: trimmedExternalUrl,
+        roleInWork: trimmedRoleInWork,
+        tools: profile.tools
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      });
 
       await updateMyProfileClient({
         displayName: profile.name,
@@ -364,7 +368,7 @@ export default function OnboardingPage() {
                   학교 이메일
                   <input
                     className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                    placeholder="student@school.ac.kr"
+                    placeholder="student@kmu.ac.kr"
                     type="email"
                     value={sessionEmail ?? ""}
                     readOnly
