@@ -119,6 +119,37 @@ export async function createPortfolio(values: PortfolioFormValues) {
   }
 
   const admin = createAdminClient();
+  const { data: existing, error: existingError } = await admin
+    .from("portfolio_items")
+    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
+    .eq("user_id", currentUser.id)
+    .eq("external_url", values.externalUrl)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(existingError.message);
+  }
+
+  if (existing) {
+    const { data, error } = await admin
+      .from("portfolio_items")
+      .update({
+        title: values.title,
+        description: values.description || null,
+        role_in_work: values.roleInWork || null,
+        tools: values.tools,
+      })
+      .eq("id", existing.id)
+      .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return mapPortfolioRow(data as PortfolioRow);
+  }
+
   const { data, error } = await admin
     .from("portfolio_items")
     .insert({

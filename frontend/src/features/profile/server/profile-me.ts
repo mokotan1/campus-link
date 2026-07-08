@@ -19,6 +19,16 @@ export type ProfileFormValues = {
   onboardingCompleted: boolean;
 };
 
+export type ProfileReadiness = {
+  hasSchoolEmail: boolean;
+  hasBasicInfo: boolean;
+  hasRoleTags: boolean;
+  hasPortfolio: boolean;
+  hasRoleInWork: boolean;
+  hasAvailability: boolean;
+  isReady: boolean;
+};
+
 export type ProfileRecord = {
   email: string;
   displayName: string;
@@ -34,6 +44,7 @@ export type ProfileRecord = {
   weeklyHours: string;
   collaborationStatus: "OPEN" | "CLOSED";
   onboardingCompleted: boolean;
+  readiness: ProfileReadiness;
 };
 
 type ProfileRow = {
@@ -51,10 +62,47 @@ type ProfileRow = {
   onboarding_completed: boolean | null;
 };
 
+type PortfolioReadinessRow = {
+  role_in_work: string | null;
+};
+
+function computeProfileReadiness(
+  email: string,
+  campus: string | null,
+  profile: ProfileRow,
+  portfolios: PortfolioReadinessRow[],
+): ProfileReadiness {
+  const hasPortfolio = portfolios.length > 0;
+  const hasRoleInWork = portfolios.some((item) =>
+    Boolean(item.role_in_work?.trim()),
+  );
+
+  const readiness: ProfileReadiness = {
+    hasSchoolEmail: email.endsWith("@school.ac.kr"),
+    hasBasicInfo: Boolean(campus && profile.department && profile.grade),
+    hasRoleTags: (profile.role_tags ?? []).length > 0,
+    hasPortfolio,
+    hasRoleInWork,
+    hasAvailability: Boolean(profile.availability_status),
+    isReady: false,
+  };
+
+  readiness.isReady =
+    readiness.hasSchoolEmail &&
+    readiness.hasBasicInfo &&
+    readiness.hasRoleTags &&
+    readiness.hasPortfolio &&
+    readiness.hasRoleInWork &&
+    readiness.hasAvailability;
+
+  return readiness;
+}
+
 function mapProfileRow(
   email: string,
   campus: string | null,
   profile: ProfileRow,
+  readiness: ProfileReadiness,
 ): ProfileRecord {
   return {
     email,
@@ -72,6 +120,7 @@ function mapProfileRow(
     collaborationStatus:
       profile.collaboration_status === "CLOSED" ? "CLOSED" : "OPEN",
     onboardingCompleted: profile.onboarding_completed ?? false,
+    readiness,
   };
 }
 
@@ -86,15 +135,22 @@ export async function getMyProfile() {
   }
 
   const admin = createAdminClient();
-  const [{ data: userRow, error: userError }, { data: profile, error: profileError }] =
-    await Promise.all([
-      admin.from("users").select("campus").eq("id", appUser.id).single(),
-      admin
-        .from("profiles")
-        .select(profileSelect)
-        .eq("user_id", appUser.id)
-        .single(),
-    ]);
+  const [
+    { data: userRow, error: userError },
+    { data: profile, error: profileError },
+    { data: portfolios, error: portfoliosError },
+  ] = await Promise.all([
+    admin.from("users").select("campus").eq("id", appUser.id).single(),
+    admin
+      .from("profiles")
+      .select(profileSelect)
+      .eq("user_id", appUser.id)
+      .single(),
+    admin
+      .from("portfolio_items")
+      .select("role_in_work")
+      .eq("user_id", appUser.id),
+  ]);
 
   if (userError) {
     throw new Error(userError.message);
@@ -104,7 +160,18 @@ export async function getMyProfile() {
     throw new Error(profileError.message);
   }
 
-  return mapProfileRow(appUser.email, userRow.campus, profile);
+  if (portfoliosError) {
+    throw new Error(portfoliosError.message);
+  }
+
+  const readiness = computeProfileReadiness(
+    appUser.email,
+    userRow.campus,
+    profile,
+    portfolios ?? [],
+  );
+
+  return mapProfileRow(appUser.email, userRow.campus, profile, readiness);
 }
 
 export async function updateMyProfile(values: ProfileFormValues) {
@@ -151,15 +218,29 @@ export async function updateMyProfile(values: ProfileFormValues) {
     throw new Error(error.message);
   }
 
-  const { data: userRow, error: userError } = await admin
-    .from("users")
-    .select("campus")
-    .eq("id", appUser.id)
-    .single();
+  const [{ data: userRow, error: userError }, { data: portfolios, error: portfoliosError }] =
+    await Promise.all([
+      admin.from("users").select("campus").eq("id", appUser.id).single(),
+      admin
+        .from("portfolio_items")
+        .select("role_in_work")
+        .eq("user_id", appUser.id),
+    ]);
 
   if (userError) {
     throw new Error(userError.message);
   }
 
-  return mapProfileRow(appUser.email, userRow.campus, profile);
+  if (portfoliosError) {
+    throw new Error(portfoliosError.message);
+  }
+
+  const readiness = computeProfileReadiness(
+    appUser.email,
+    userRow.campus,
+    profile,
+    portfolios ?? [],
+  );
+
+  return mapProfileRow(appUser.email, userRow.campus, profile, readiness);
 }
