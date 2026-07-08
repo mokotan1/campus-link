@@ -83,7 +83,7 @@ This ordering preserves the original intent:
 - Consumes: Existing migration SQL contents.
 - Produces: Unique Supabase migration versions that can be pushed without local duplicate version conflicts.
 
-- [ ] **Step 1: Rename migrations with PowerShell**
+- [x] **Step 1: Rename migrations with PowerShell**
 
 Run from `D:\git_camp\campus-link`:
 
@@ -101,7 +101,7 @@ Expected:
 - No command errors.
 - Old duplicate-prefix filenames no longer exist.
 
-- [ ] **Step 2: Verify there are no duplicate migration versions**
+- [x] **Step 2: Verify there are no duplicate migration versions**
 
 Run:
 
@@ -121,7 +121,7 @@ Expected output contains only:
 202607080002_school_email_verification.sql
 ```
 
-- [ ] **Step 3: Run frontend verification**
+- [x] **Step 3: Run frontend verification**
 
 Run:
 
@@ -134,7 +134,7 @@ npm.cmd run lint
 Expected:
 - Both commands pass.
 
-- [ ] **Step 4: Commit local migration readiness changes**
+- [x] **Step 4: Commit local migration readiness changes**
 
 Run from `D:\git_camp\campus-link`:
 
@@ -157,7 +157,7 @@ Expected:
 - Consumes: Supabase Dashboard SQL Editor or Supabase CLI access to the linked project.
 - Produces: A clear decision on whether to reset/clean the remote development DB.
 
-- [ ] **Step 1: Confirm the remote project is development-only**
+- [x] **Step 1: Confirm the remote project is development-only**
 
 Ask the human:
 
@@ -173,7 +173,7 @@ Expected answer for this plan:
 
 If the answer is not exactly development-only, stop this plan and use Supabase migration repair with a backup-first production plan instead.
 
-- [ ] **Step 2: Inspect migration history in Supabase Dashboard**
+- [x] **Step 2: Inspect migration history in Supabase Dashboard**
 
 Open Supabase Dashboard → SQL Editor and run:
 
@@ -187,7 +187,7 @@ Expected before cleanup:
 - There may be rows such as `20260705`, `20260706`, `20260707`, or `20260708`.
 - These rows may not match the renamed local files from Task 1.
 
-- [ ] **Step 3: Inspect app tables in Supabase Dashboard**
+- [x] **Step 3: Inspect app tables in Supabase Dashboard**
 
 Run:
 
@@ -213,7 +213,7 @@ Expected before cleanup:
 - Consumes: Confirmation from Task 2 that the remote DB has no data to preserve.
 - Produces: A remote DB ready to receive the renamed local migrations from scratch.
 
-- [ ] **Step 1: Run development-only cleanup SQL**
+- [x] **Step 1: Run development-only cleanup SQL**
 
 Only run this if the human confirmed the remote DB has no important data.
 
@@ -247,7 +247,7 @@ Expected:
 - The app tables are removed.
 - Old conflicting migration version records are removed.
 
-- [ ] **Step 2: Verify cleanup**
+- [x] **Step 2: Verify cleanup**
 
 Run:
 
@@ -285,7 +285,7 @@ Expected:
 - Consumes: Renamed migrations from Task 1 and clean remote DB from Task 3.
 - Produces: Remote Supabase DB with app schema applied.
 
-- [ ] **Step 1: Run Supabase DB push**
+- [x] **Step 1: Run Supabase DB push**
 
 Run from `D:\git_camp\campus-link\frontend`:
 
@@ -321,7 +321,7 @@ Expected final result:
 - No `duplicate key value violates unique constraint "schema_migrations_pkey"` error.
 - No `relation "public.users" does not exist` error.
 
-- [ ] **Step 2: Verify migration history**
+- [x] **Step 2: Verify migration history**
 
 Run in Supabase Dashboard SQL Editor:
 
@@ -344,7 +344,7 @@ Expected rows:
 202607080002
 ```
 
-- [ ] **Step 3: Verify required columns exist**
+- [x] **Step 3: Verify required columns exist**
 
 Run:
 
@@ -403,7 +403,7 @@ Expected:
 - Consumes: Successful `npx supabase db push`.
 - Produces: Handoff summary for the human.
 
-- [ ] **Step 1: Run local checks**
+- [x] **Step 1: Run local checks**
 
 Run from `D:\git_camp\campus-link\frontend`:
 
@@ -415,7 +415,7 @@ npm.cmd run lint
 Expected:
 - Both pass.
 
-- [ ] **Step 2: Report final status**
+- [x] **Step 2: Report final status**
 
 Report in Korean:
 
