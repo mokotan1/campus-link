@@ -44,8 +44,31 @@ export type ProfileRecord = {
   weeklyHours: string;
   collaborationStatus: "OPEN" | "CLOSED";
   onboardingCompleted: boolean;
+  onboardingStep: number;
   readiness: ProfileReadiness;
 };
+
+function resolveOnboardingStep(profile: {
+  campus: string;
+  department: string;
+  grade: string;
+  roleTags: string[];
+  availabilityStatus: string;
+  collaborationType: string;
+  weeklyHours: string;
+  onboardingCompleted: boolean;
+}) {
+  if (!profile.campus || !profile.department || !profile.grade) return 0;
+  if (!profile.roleTags.length) return 1;
+  if (
+    !profile.availabilityStatus ||
+    !profile.collaborationType ||
+    !profile.weeklyHours
+  ) {
+    return 3;
+  }
+  return profile.onboardingCompleted ? 4 : 3;
+}
 
 type ProfileRow = {
   student_id: string | null;
@@ -104,7 +127,7 @@ function mapProfileRow(
   profile: ProfileRow,
   readiness: ProfileReadiness,
 ): ProfileRecord {
-  return {
+  const mapped = {
     email,
     displayName: profile.display_name ?? "",
     campus: campus ?? "",
@@ -120,6 +143,11 @@ function mapProfileRow(
     collaborationStatus:
       profile.collaboration_status === "CLOSED" ? "CLOSED" : "OPEN",
     onboardingCompleted: profile.onboarding_completed ?? false,
+  } satisfies Omit<ProfileRecord, "onboardingStep" | "readiness">;
+
+  return {
+    ...mapped,
+    onboardingStep: resolveOnboardingStep(mapped),
     readiness,
   };
 }

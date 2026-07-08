@@ -22,6 +22,38 @@ const stepDescriptions = [
   "입력한 정보로 어울리는 팀을 먼저 보여줍니다.",
 ];
 
+type ProfileApiRecord = {
+  email: string;
+  displayName: string;
+  campus: string;
+  studentId: string;
+  department: string;
+  grade: string;
+  roleTags: string[];
+  techStack: string;
+  availabilityStatus: string;
+  collaborationType: string;
+  weeklyHours: string;
+  onboardingCompleted: boolean;
+  onboardingStep: number;
+};
+
+type PortfolioApiRecord = {
+  externalUrl: string;
+  description: string;
+  roleInWork: string;
+};
+
+function parsePortfolioThumbnail(description: string) {
+  const prefix = "썸네일: ";
+
+  if (description.startsWith(prefix)) {
+    return description.slice(prefix.length).trim();
+  }
+
+  return "";
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const { profile, setProfile } = useAppData();
@@ -29,6 +61,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
   const [portfolioExternalUrl, setPortfolioExternalUrl] = useState("");
@@ -82,6 +115,95 @@ export default function OnboardingPage() {
       subscription.unsubscribe();
     };
   }, [setProfile, supabase]);
+
+  useEffect(() => {
+    if (!sessionEmail) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadSavedProfile() {
+      setLoadingProfile(true);
+      const email = sessionEmail;
+
+      try {
+        const profileResponse = await fetch("/api/profiles/me", {
+          cache: "no-store",
+        });
+
+        const profilePayload = (await profileResponse.json()) as {
+          success?: boolean;
+          data?: ProfileApiRecord;
+        };
+
+        if (!active) {
+          return;
+        }
+
+        if (profileResponse.ok && profilePayload.success && profilePayload.data) {
+          const data = profilePayload.data;
+
+          setStep(data.onboardingStep);
+          setProfile((current) => ({
+            ...current,
+            name: data.displayName || current.name,
+            campus: (data.campus || current.campus) as Campus,
+            department: data.department || current.department,
+            grade: data.grade || current.grade,
+            email: data.email || email || "",
+            roles: data.roleTags.length ? data.roleTags : current.roles,
+            tools: data.techStack || current.tools,
+            availabilityStatus: data.availabilityStatus || current.availabilityStatus,
+            collaborationType: data.collaborationType || current.collaborationType,
+            weeklyHours: data.weeklyHours || current.weeklyHours,
+            completed: data.onboardingCompleted,
+          }));
+
+          try {
+            const portfolioResponse = await fetch("/api/portfolios", {
+              cache: "no-store",
+            });
+
+            const portfolioPayload = (await portfolioResponse.json()) as {
+              success?: boolean;
+              data?: PortfolioApiRecord[];
+            };
+
+            if (!active) {
+              return;
+            }
+
+            if (
+              portfolioResponse.ok &&
+              portfolioPayload.success &&
+              portfolioPayload.data?.length
+            ) {
+              const portfolio = portfolioPayload.data[0];
+
+              setPortfolioExternalUrl(portfolio.externalUrl);
+              setPortfolioThumbnailUrl(parsePortfolioThumbnail(portfolio.description));
+              setPortfolioRoleInWork(portfolio.roleInWork);
+            }
+          } catch {
+            // Portfolio hydration is optional for resume.
+          }
+        }
+      } catch {
+        // Keep default onboarding state when profile loading fails.
+      } finally {
+        if (active) {
+          setLoadingProfile(false);
+        }
+      }
+    }
+
+    void loadSavedProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [sessionEmail, setProfile]);
 
   function toggleRole(role: string) {
     setProfile({
@@ -195,13 +317,13 @@ export default function OnboardingPage() {
           5단계를 모두 마치면 자동으로 추천 프로젝트 페이지로 이동합니다.
         </p>
 
-        {loadingSession ? (
+        {loadingSession || (sessionEmail && loadingProfile) ? (
           <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6 text-sm font-bold text-slate-500 shadow-sm">
-            로그인 상태를 확인하고 있습니다.
+            {loadingSession ? "로그인 상태를 확인하고 있습니다." : "저장된 프로필을 불러오고 있습니다."}
           </div>
         ) : null}
 
-        {!loadingSession && !sessionEmail ? (
+        {!loadingSession && !loadingProfile && !sessionEmail ? (
           <div className="mt-8 grid gap-6">
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
               온보딩 내용을 저장하려면 먼저 로그인 또는 회원가입이 필요합니다.
@@ -210,7 +332,7 @@ export default function OnboardingPage() {
           </div>
         ) : null}
 
-        {!loadingSession && sessionEmail ? (
+        {!loadingSession && !loadingProfile && sessionEmail ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
             <div>
