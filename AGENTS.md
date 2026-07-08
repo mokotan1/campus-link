@@ -105,7 +105,8 @@ shared/types
 2. `docs/architecture-ddd.md`
 3. `docs/ai-task-template.md`
 4. `docs/feature-slices.md`
-5. Notion의 백엔드/프론트엔드 시스템 기획서와 API 명세서
+5. `docs/notion-campus-link.md`
+6. Notion의 백엔드/프론트엔드 시스템 기획서와 API 명세서
 
 ## 작업 완료 전 확인
 
