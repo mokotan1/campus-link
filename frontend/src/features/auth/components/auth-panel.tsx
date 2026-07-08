@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
 import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
 import { createClient } from "@/lib/supabase/client";
@@ -66,21 +67,6 @@ function messageClassName(tone: AuthMessageTone) {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
-async function bootstrapAppUser() {
-  const response = await fetch("/api/auth/bootstrap", {
-    method: "POST",
-  });
-
-  const payload = (await response.json()) as {
-    success?: boolean;
-    message?: string;
-  };
-
-  if (!response.ok || !payload.success) {
-    throw new Error(payload.message ?? "앱 사용자 생성에 실패했습니다.");
-  }
 }
 
 export function AuthPanel() {
@@ -213,7 +199,7 @@ export function AuthPanel() {
         }
 
         if (data.session) {
-          await bootstrapAppUser();
+          await bootstrapAppUserClient();
           await loadProfile();
           setMessage({
             tone: "success",
@@ -238,7 +224,7 @@ export function AuthPanel() {
         return;
       }
 
-      await bootstrapAppUser();
+      await bootstrapAppUserClient();
       await loadProfile();
       setMessage({
         tone: "success",

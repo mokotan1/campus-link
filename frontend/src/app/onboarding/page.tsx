@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
 import { defaultOnboardingProfile, useAppData } from "@/shared/lib/app-data-context";
+import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
 import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
 import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
@@ -44,6 +45,7 @@ export default function OnboardingPage() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string>("");
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
   const [portfolioExternalUrl, setPortfolioExternalUrl] = useState("");
   const [portfolioThumbnailUrl, setPortfolioThumbnailUrl] = useState("");
   const [portfolioRoleInWork, setPortfolioRoleInWork] = useState("");
@@ -109,10 +111,18 @@ export default function OnboardingPage() {
 
     async function loadSavedProfile() {
       setLoadingProfile(true);
+      setProfileLoadError(null);
       const email = sessionEmail;
 
       try {
-        const data = await getMyProfileClient();
+        let data;
+
+        try {
+          data = await getMyProfileClient();
+        } catch {
+          await bootstrapAppUserClient();
+          data = await getMyProfileClient();
+        }
 
         if (!active) {
           return;
@@ -150,8 +160,14 @@ export default function OnboardingPage() {
         } catch {
           // Portfolio hydration is optional for resume.
         }
-      } catch {
-        // Keep default onboarding state when profile loading fails.
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setProfileLoadError(
+          error instanceof Error ? error.message : "저장된 프로필을 불러오지 못했습니다.",
+        );
       } finally {
         if (active) {
           setLoadingProfile(false);
@@ -250,7 +266,13 @@ export default function OnboardingPage() {
           </div>
         ) : null}
 
-        {!loadingSession && !loadingProfile && sessionEmail ? (
+        {!loadingSession && !loadingProfile && sessionEmail && profileLoadError ? (
+          <div className="mt-8 rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+            {profileLoadError}
+          </div>
+        ) : null}
+
+        {!loadingSession && !loadingProfile && sessionEmail && !profileLoadError ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
             <div>
