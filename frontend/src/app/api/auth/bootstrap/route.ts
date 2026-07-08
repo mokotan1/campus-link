@@ -1,6 +1,7 @@
+import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
 import { bootstrapUser } from "@/features/auth/server/bootstrap-user";
+import { apiError, apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-import { apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
 
 function isAuthSessionError(error: Error) {
   return /session|jwt|token|unauthorized/i.test(error.message);
@@ -26,9 +27,14 @@ export async function POST() {
       return apiUnauthorized();
     }
 
+    if (!isSchoolEmail(user.email)) {
+      return apiError(schoolEmailMessage(), { status: 400 });
+    }
+
     const result = await bootstrapUser({
       authUserId: user.id,
       email: user.email,
+      emailVerified: Boolean(user.email_confirmed_at),
     });
 
     return apiOk(result);

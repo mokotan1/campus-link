@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthStateChangeHandler = Parameters<
@@ -180,6 +181,11 @@ export function AuthPanel() {
     });
 
     try {
+      if (!isSchoolEmail(email)) {
+        setMessage({ tone: "error", text: schoolEmailMessage() });
+        return;
+      }
+
       if (mode === "sign-up") {
         const { data, error } = await supabase.auth.signUp({ email, password });
 
