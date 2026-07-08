@@ -6,6 +6,8 @@ import { Tag } from "@/shared/components/tag";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
 import { useAppData } from "@/shared/lib/app-data-context";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
+import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
+import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
 import { createClient } from "@/lib/supabase/client";
 import type { Campus } from "@/shared/types";
 
@@ -21,28 +23,6 @@ const stepDescriptions = [
   "지금 어떤 방식으로 팀에 참여할 수 있는지 정합니다.",
   "입력한 정보로 어울리는 팀을 먼저 보여줍니다.",
 ];
-
-type ProfileApiRecord = {
-  email: string;
-  displayName: string;
-  campus: string;
-  studentId: string;
-  department: string;
-  grade: string;
-  roleTags: string[];
-  techStack: string;
-  availabilityStatus: string;
-  collaborationType: string;
-  weeklyHours: string;
-  onboardingCompleted: boolean;
-  onboardingStep: number;
-};
-
-type PortfolioApiRecord = {
-  externalUrl: string;
-  description: string;
-  roleInWork: string;
-};
 
 function parsePortfolioThumbnail(description: string) {
   const prefix = "썸네일: ";
@@ -128,66 +108,44 @@ export default function OnboardingPage() {
       const email = sessionEmail;
 
       try {
-        const profileResponse = await fetch("/api/profiles/me", {
-          cache: "no-store",
-        });
-
-        const profilePayload = (await profileResponse.json()) as {
-          success?: boolean;
-          data?: ProfileApiRecord;
-        };
+        const data = await getMyProfileClient();
 
         if (!active) {
           return;
         }
 
-        if (profileResponse.ok && profilePayload.success && profilePayload.data) {
-          const data = profilePayload.data;
+        setStep(data.onboardingStep);
+        setProfile((current) => ({
+          ...current,
+          name: data.displayName || current.name,
+          campus: (data.campus || current.campus) as Campus,
+          department: data.department || current.department,
+          grade: data.grade || current.grade,
+          email: data.email || email || "",
+          roles: data.roleTags.length ? data.roleTags : current.roles,
+          tools: data.techStack || current.tools,
+          availabilityStatus: data.availabilityStatus || current.availabilityStatus,
+          collaborationType: data.collaborationType || current.collaborationType,
+          weeklyHours: data.weeklyHours || current.weeklyHours,
+          completed: data.onboardingCompleted,
+        }));
 
-          setStep(data.onboardingStep);
-          setProfile((current) => ({
-            ...current,
-            name: data.displayName || current.name,
-            campus: (data.campus || current.campus) as Campus,
-            department: data.department || current.department,
-            grade: data.grade || current.grade,
-            email: data.email || email || "",
-            roles: data.roleTags.length ? data.roleTags : current.roles,
-            tools: data.techStack || current.tools,
-            availabilityStatus: data.availabilityStatus || current.availabilityStatus,
-            collaborationType: data.collaborationType || current.collaborationType,
-            weeklyHours: data.weeklyHours || current.weeklyHours,
-            completed: data.onboardingCompleted,
-          }));
+        try {
+          const portfolios = await listMyPortfoliosClient();
 
-          try {
-            const portfolioResponse = await fetch("/api/portfolios", {
-              cache: "no-store",
-            });
-
-            const portfolioPayload = (await portfolioResponse.json()) as {
-              success?: boolean;
-              data?: PortfolioApiRecord[];
-            };
-
-            if (!active) {
-              return;
-            }
-
-            if (
-              portfolioResponse.ok &&
-              portfolioPayload.success &&
-              portfolioPayload.data?.length
-            ) {
-              const portfolio = portfolioPayload.data[0];
-
-              setPortfolioExternalUrl(portfolio.externalUrl);
-              setPortfolioThumbnailUrl(parsePortfolioThumbnail(portfolio.description));
-              setPortfolioRoleInWork(portfolio.roleInWork);
-            }
-          } catch {
-            // Portfolio hydration is optional for resume.
+          if (!active) {
+            return;
           }
+
+          if (portfolios.length) {
+            const portfolio = portfolios[0];
+
+            setPortfolioExternalUrl(portfolio.externalUrl);
+            setPortfolioThumbnailUrl(parsePortfolioThumbnail(portfolio.description));
+            setPortfolioRoleInWork(portfolio.roleInWork);
+          }
+        } catch {
+          // Portfolio hydration is optional for resume.
         }
       } catch {
         // Keep default onboarding state when profile loading fails.
@@ -217,85 +175,42 @@ export default function OnboardingPage() {
     setSaveMessage("프로필 저장 중입니다.");
 
     try {
-      const profileResponse = await fetch("/api/profiles/me", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const profilePayload = (await profileResponse.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: { studentId: string };
-      };
-
-      if (!profileResponse.ok || !profilePayload.success || !profilePayload.data) {
-        throw new Error(profilePayload.message ?? "기존 프로필을 불러오지 못했습니다.");
-      }
+      const existingProfile = await getMyProfileClient();
 
       const collaborationStatus =
         profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
 
-      const response = await fetch("/api/profiles/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          displayName: profile.name,
-          campus: profile.campus,
-          studentId: profilePayload.data.studentId,
-          department: profile.department,
-          grade: profile.grade,
-          bio: "",
-          roleTags: profile.roles,
-          techStack: profile.tools,
-          availabilityStatus: profile.availabilityStatus,
-          collaborationType: profile.collaborationType,
-          weeklyHours: profile.weeklyHours,
-          collaborationStatus,
-          onboardingCompleted: true,
-        }),
+      await updateMyProfileClient({
+        displayName: profile.name,
+        campus: profile.campus,
+        studentId: existingProfile.studentId,
+        department: profile.department,
+        grade: profile.grade,
+        bio: "",
+        roleTags: profile.roles,
+        techStack: profile.tools,
+        availabilityStatus: profile.availabilityStatus,
+        collaborationType: profile.collaborationType,
+        weeklyHours: profile.weeklyHours,
+        collaborationStatus,
+        onboardingCompleted: true,
       });
-
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-      };
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.message ?? "프로필 저장에 실패했습니다.");
-      }
 
       const trimmedExternalUrl = portfolioExternalUrl.trim();
 
       if (trimmedExternalUrl) {
-        const portfolioResponse = await fetch("/api/portfolios", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            title: profile.name.trim() || "대표 작업물",
-            description: portfolioThumbnailUrl.trim()
-              ? `썸네일: ${portfolioThumbnailUrl.trim()}`
-              : "",
-            externalUrl: trimmedExternalUrl,
-            roleInWork: portfolioRoleInWork.trim(),
-            tools: profile.tools
-              .split(",")
-              .map((item) => item.trim())
-              .filter(Boolean),
-          }),
+        await savePortfolioClient({
+          title: profile.name.trim() || "대표 작업물",
+          description: portfolioThumbnailUrl.trim()
+            ? `썸네일: ${portfolioThumbnailUrl.trim()}`
+            : "",
+          externalUrl: trimmedExternalUrl,
+          roleInWork: portfolioRoleInWork.trim(),
+          tools: profile.tools
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
         });
-
-        const portfolioPayload = (await portfolioResponse.json()) as {
-          success?: boolean;
-          message?: string;
-        };
-
-        if (!portfolioResponse.ok || !portfolioPayload.success) {
-          throw new Error(portfolioPayload.message ?? "포트폴리오 저장에 실패했습니다.");
-        }
       }
 
       setProfile({ ...profile, completed: true });

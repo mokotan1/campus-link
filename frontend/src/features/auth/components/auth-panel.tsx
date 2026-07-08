@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
+import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
 import { createClient } from "@/lib/supabase/client";
 
 type AuthStateChangeHandler = Parameters<
@@ -96,22 +97,17 @@ export function AuthPanel() {
   const [profile, setProfile] = useState<ProfileFormState>(emptyProfileState);
 
   async function loadProfile() {
-    const response = await fetch("/api/profiles/me", {
-      method: "GET",
-      cache: "no-store",
+    const data = await getMyProfileClient();
+
+    setProfile({
+      email: data.email,
+      studentId: data.studentId,
+      department: data.department,
+      grade: data.grade,
+      bio: data.bio,
+      techStack: data.techStack,
+      collaborationStatus: data.collaborationStatus,
     });
-
-    const payload = (await response.json()) as {
-      success?: boolean;
-      message?: string;
-      data?: ProfileFormState;
-    };
-
-    if (!response.ok || !payload.success || !payload.data) {
-      throw new Error(payload.message ?? "프로필을 불러오지 못했습니다.");
-    }
-
-    setProfile(payload.data);
     setProfileMessage({
       tone: "success",
       text: "현재 사용자 프로필을 불러왔습니다.",
@@ -275,25 +271,31 @@ export function AuthPanel() {
     });
 
     try {
-      const response = await fetch("/api/profiles/me", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(profile),
+      const data = await updateMyProfileClient({
+        displayName: "",
+        campus: "",
+        studentId: profile.studentId,
+        department: profile.department,
+        grade: profile.grade,
+        bio: profile.bio,
+        roleTags: [],
+        techStack: profile.techStack,
+        availabilityStatus: "",
+        collaborationType: "",
+        weeklyHours: "",
+        collaborationStatus: profile.collaborationStatus,
+        onboardingCompleted: false,
       });
 
-      const payload = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-        data?: ProfileFormState;
-      };
-
-      if (!response.ok || !payload.success || !payload.data) {
-        throw new Error(payload.message ?? "프로필 저장에 실패했습니다.");
-      }
-
-      setProfile(payload.data);
+      setProfile({
+        email: data.email,
+        studentId: data.studentId,
+        department: data.department,
+        grade: data.grade,
+        bio: data.bio,
+        techStack: data.techStack,
+        collaborationStatus: data.collaborationStatus,
+      });
       setProfileMessage({
         tone: "success",
         text: "프로필 저장이 완료되었습니다.",
