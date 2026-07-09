@@ -5,10 +5,23 @@ export type Campus = "대명캠" | "성서캠";
 export type ProjectStatus = "모집중" | "진행중" | "완료";
 
 export type Project = {
-  id: number;
+  id: string;
   title: string;
   campus: Campus;
+  /** 작성자 (projects.csv: author) */
+  author: string;
+  /** 카테고리 (projects.csv: category) */
+  category: string;
+  /** 모집 역할 전체 목록 (projects.csv: recruiting_roles) */
+  recruitingRoles: string[];
+  /** 대표 역할 (필터/카드 표시용, recruitingRoles[0]) */
   role: string;
+  maxMembers: number;
+  currentMembers: number;
+  /** ISO date (YYYY-MM-DD) */
+  deadline: string;
+  /** ISO date (YYYY-MM-DD) */
+  createdAt: string;
   status: ProjectStatus;
   summary: string;
   content: string;
@@ -20,10 +33,18 @@ export type Project = {
 };
 
 export type Talent = {
-  id: number;
+  id: string;
   name: string;
+  studentNumber: string;
   campus: Campus;
+  major: string;
+  grade: string;
+  /** 대표 역할 (카드/필터 표시용, major 또는 skills 기반) */
   role: string;
+  interests: string[];
+  skills: string[];
+  introduction: string;
+  email: string;
   tools: { label: string; tone?: TagTone }[];
   availability: string;
   portfolio: string;
@@ -35,8 +56,12 @@ export type Application = {
   id: number;
   title: string;
   type: "지원" | "제안";
+  /** sent: 내가 보낸 지원/제안, received: 내가 받은 제안 */
+  direction: "sent" | "received";
   status: ApplicationStatus;
   meta: string;
+  projectId?: string;
+  talentId?: string;
 };
 
 export type Portfolio = {

@@ -1,10 +1,27 @@
-import type { Application, Campus, Project, Talent, TagTone } from "@/shared/types";
+import type { Application, Campus, TagTone } from "@/shared/types";
+import { projectsCsvRaw } from "@/shared/data/projects-csv";
+import { studentsCsvRaw } from "@/shared/data/students-csv";
+import { projectsFromCsv, talentsFromCsv } from "@/shared/lib/transform-csv";
 
-export const roles = ["개발", "기획", "2D 아트", "3D 모델링", "애니메이션", "UI/UX"];
+export const roles = [
+  "기획",
+  "PM",
+  "리서처",
+  "프론트엔드",
+  "백엔드",
+  "개발자",
+  "AI 엔지니어",
+  "데이터 분석",
+  "디자이너",
+  "UX/UI",
+  "브랜딩",
+  "콘텐츠 제작",
+  "마케팅",
+];
 export const collaborationTypes = ["졸업작품", "게임잼", "공모전", "포트폴리오 단기 프로젝트"];
 export const availabilityOptions = ["3시간 이하", "4-7시간", "8-12시간", "13시간 이상"];
 export const campuses: (Campus | "전체 캠퍼스")[] = ["전체 캠퍼스", "대명캠", "성서캠"];
-export const roleFilters = ["모든 역할", "개발", "기획", "2D 아트", "애니메이션", "UI/UX"];
+export const roleFilters = ["모든 역할", ...roles];
 export const statusFilters = ["전체 상태", "모집중", "진행중", "완료"];
 
 export const tagToneClass: Record<TagTone, string> = {
@@ -16,124 +33,65 @@ export const tagToneClass: Record<TagTone, string> = {
   green: "bg-emerald-50 text-emerald-700 ring-emerald-200",
 };
 
-export const projectMediaClass: Record<Project["accent"], string> = {
+export const projectMediaClass: Record<"blue" | "amber" | "green", string> = {
   blue: "from-blue-100 via-slate-100 to-teal-100",
   amber: "from-amber-100 via-stone-100 to-rose-100",
   green: "from-teal-100 via-emerald-50 to-lime-100",
 };
 
-export const initialProjects: Project[] = [
-  {
-    id: 1,
-    title: "리듬 액션 졸업작품 팀",
-    campus: "성서캠",
-    role: "2D 아트",
-    status: "모집중",
-    summary: "Unity 프로토타입은 완성했고 캐릭터 애니메이션과 UI 아트를 함께 다듬을 팀원을 찾습니다.",
-    content:
-      "Unity 프로토타입은 완성했고 캐릭터 애니메이션과 UI 아트를 함께 다듬을 팀원을 찾습니다. 리듬 액션 장르 특성상 타이밍에 맞는 모션과 이펙트가 중요해서, 애니메이션 감각이 있는 분과 함께 디테일을 다듬고 싶습니다.",
-    tags: [
-      { label: "Unity", tone: "blue" },
-      { label: "2D 애니메이션", tone: "rose" },
-      { label: "졸업작품", tone: "amber" },
-    ],
-    verified: "기획서 · 프로토타입 확인됨",
-    action: "지원하기",
-    accent: "blue",
-  },
-  {
-    id: 2,
-    title: "스토리 퍼즐 어드벤처",
-    campus: "대명캠",
-    role: "개발",
-    status: "모집중",
-    summary: "콘셉트 아트와 시나리오 초안이 준비된 팀에서 플레이어블 데모를 구현할 개발 파트너를 찾습니다.",
-    content:
-      "콘셉트 아트와 시나리오 초안이 준비된 팀에서 플레이어블 데모를 구현할 개발 파트너를 찾습니다. Figma로 UI 와이어프레임까지 나온 상태라 바로 구현에 들어갈 수 있습니다.",
-    tags: [
-      { label: "프론트 개발", tone: "blue" },
-      { label: "게임잼", tone: "amber" },
-      { label: "Figma" },
-    ],
-    verified: "아트보드 · 시나리오 확인됨",
-    action: "제안하기",
-    accent: "amber",
-  },
-  {
-    id: 3,
-    title: "협동 로그라이크 프로토타입",
-    campus: "성서캠",
-    role: "애니메이션",
-    status: "진행중",
-    summary: "개발팀 3명이 전투 루프를 제작 중이며 몬스터 디자인과 이펙트 작업자를 모집합니다.",
-    content:
-      "개발팀 3명이 전투 루프를 제작 중이며 몬스터 디자인과 이펙트 작업자를 모집합니다. Godot 기반이며 주 2회 정기 회의로 진행 상황을 공유합니다.",
-    tags: [
-      { label: "Godot", tone: "blue" },
-      { label: "캐릭터 디자인", tone: "rose" },
-      { label: "VFX" },
-    ],
-    verified: "팀 구성 · 일정 확인됨",
-    action: "지원하기",
-    accent: "green",
-  },
-];
+// CSV 기반 더미데이터 (projects.csv 100건 / students.csv 100건을
+// 화면용 타입으로 변환한 결과). DB 연동 전 프론트 MVP 데이터 소스로 사용한다.
+export const initialProjects = projectsFromCsv(projectsCsvRaw);
+export const initialTalents = talentsFromCsv(studentsCsvRaw);
 
-export const initialTalents: Talent[] = [
-  {
-    id: 1,
-    name: "이서윤",
-    campus: "대명캠",
-    role: "2D 애니메이션",
-    tools: [
-      { label: "Clip Studio", tone: "rose" },
-      { label: "Spine" },
-      { label: "바로 가능", tone: "teal" },
-    ],
-    availability: "졸업작품 · 주 8-12시간",
-    portfolio: "캐릭터 러프부터 완성 컷까지 이어지는 애니메이션 샘플 보유",
-  },
-  {
-    id: 2,
-    name: "박도현",
-    campus: "성서캠",
-    role: "Unity 개발",
-    tools: [
-      { label: "Unity", tone: "blue" },
-      { label: "GitHub" },
-      { label: "공모전 선호", tone: "amber" },
-    ],
-    availability: "게임잼 · 주 4-7시간",
-    portfolio: "플레이 영상과 GitHub 저장소로 구현 범위 확인 가능",
-  },
-  {
-    id: 3,
-    name: "정민아",
-    campus: "대명캠",
-    role: "UI/UX",
-    tools: [
-      { label: "Figma", tone: "blue" },
-      { label: "Photoshop" },
-      { label: "일정 맞으면 가능", tone: "green" },
-    ],
-    availability: "포트폴리오 단기 프로젝트",
-    portfolio: "메뉴 플로우, HUD, 온보딩 화면 설계 경험",
-  },
-];
-
+// 지원 현황 데모용 초기 데이터.
+// - direction "sent": 내가 프로젝트에 지원했거나 인재에게 제안한 내역
+// - direction "received": 다른 학생이 내 프로젝트에 지원했거나 나에게 제안한 내역
+// 대기/수락/거절/취소 네 가지 상태가 모두 보이도록 구성했다.
 export const initialApplications: Application[] = [
   {
     id: 1,
-    title: "리듬 액션 졸업작품 팀",
+    title: initialProjects[0]?.title ?? "프로젝트",
     type: "지원",
+    direction: "sent",
     status: "대기",
-    meta: "2D 아트 역할로 지원 완료",
+    meta: `${initialProjects[0]?.role ?? ""} 역할로 지원 완료`,
+    projectId: initialProjects[0]?.id,
   },
   {
     id: 2,
-    title: "이서윤",
+    title: initialTalents[0]?.name ?? "학생",
     type: "제안",
+    direction: "sent",
     status: "수락",
-    meta: "캐릭터 애니메이션 협업 제안",
+    meta: `${initialTalents[0]?.role ?? ""} 협업 제안`,
+    talentId: initialTalents[0]?.id,
+  },
+  {
+    id: 3,
+    title: initialTalents[1]?.name ?? "학생",
+    type: "제안",
+    direction: "received",
+    status: "대기",
+    meta: `${initialTalents[1]?.name ?? ""}님이 함께하고 싶다는 제안을 보냈습니다.`,
+    talentId: initialTalents[1]?.id,
+  },
+  {
+    id: 4,
+    title: initialTalents[2]?.name ?? "학생",
+    type: "지원",
+    direction: "received",
+    status: "거절",
+    meta: `${initialTalents[2]?.name ?? ""}님이 내 프로젝트에 지원했습니다.`,
+    talentId: initialTalents[2]?.id,
+  },
+  {
+    id: 5,
+    title: initialTalents[3]?.name ?? "학생",
+    type: "제안",
+    direction: "received",
+    status: "취소",
+    meta: `${initialTalents[3]?.name ?? ""}님이 제안을 취소했습니다.`,
+    talentId: initialTalents[3]?.id,
   },
 ];

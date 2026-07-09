@@ -19,7 +19,7 @@ const stepDescriptions = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { profile, setProfile } = useAppData();
+  const { profile, setProfile, saveProfile, profileSaveState } = useAppData();
   const [step, setStep] = useState(0);
 
   function toggleRole(role: string) {
@@ -29,8 +29,28 @@ export default function OnboardingPage() {
     });
   }
 
-  function finishOnboarding() {
-    setProfile({ ...profile, completed: true });
+  // 각 단계별 필수값 검증. 통과하지 못하면 "다음" 버튼이 비활성화된다.
+  const stepValidation: { valid: boolean; hint: string }[] = [
+    {
+      valid: profile.name.trim().length > 0 && profile.department.trim().length > 0 && profile.email.trim().length > 0,
+      hint: "이름, 학과, 학교 이메일을 모두 입력해주세요.",
+    },
+    {
+      valid: profile.roles.length > 0,
+      hint: "역할을 최소 1개 이상 선택해주세요.",
+    },
+    { valid: true, hint: "" },
+    {
+      valid: Boolean(profile.availabilityStatus) && Boolean(profile.collaborationType) && Boolean(profile.weeklyHours),
+      hint: "협업 상태, 원하는 협업, 주당 가능 시간을 선택해주세요.",
+    },
+    { valid: true, hint: "" },
+  ];
+
+  const currentStepValid = stepValidation[step].valid;
+
+  async function finishOnboarding() {
+    await saveProfile({ ...profile, completed: true });
     router.push("/projects");
   }
 
@@ -243,6 +263,10 @@ export default function OnboardingPage() {
             )}
           </form>
 
+          {!currentStepValid && (
+            <p className="border-t border-slate-200 px-5 pt-4 text-sm font-bold text-rose-600">{stepValidation[step].hint}</p>
+          )}
+
           <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-between">
             <button
               className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-45"
@@ -253,9 +277,11 @@ export default function OnboardingPage() {
               이전
             </button>
             <button
-              className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800"
+              className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
+              disabled={!currentStepValid || profileSaveState.isSaving}
               onClick={() => {
+                if (!currentStepValid) return;
                 if (step === 4) {
                   finishOnboarding();
                   return;
@@ -263,7 +289,7 @@ export default function OnboardingPage() {
                 setStep((current) => Math.min(4, current + 1));
               }}
             >
-              {step === 4 ? "프로젝트로 이동" : "다음"}
+              {step === 4 ? (profileSaveState.isSaving ? "저장 중…" : "프로젝트로 이동") : "다음"}
             </button>
           </div>
         </div>
