@@ -29,11 +29,22 @@ export default function OnboardingPage() {
     });
   }
 
+  // "아무개@아무거나" 형태만 최소한으로 걸러내는 이메일 형식 검사.
+  // 공백/온점 없는 로컬파트, @, 최소 한 번의 온점이 있는 도메인 구조를 요구한다.
+  function isValidEmailFormat(value: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+
   // 각 단계별 필수값 검증. 통과하지 못하면 "다음" 버튼이 비활성화된다.
   const stepValidation: { valid: boolean; hint: string }[] = [
     {
-      valid: profile.name.trim().length > 0 && profile.department.trim().length > 0 && profile.email.trim().length > 0,
-      hint: "이름, 학과, 학교 이메일을 모두 입력해주세요.",
+      valid:
+        profile.name.trim().length > 0 &&
+        profile.department.trim().length > 0 &&
+        isValidEmailFormat(profile.email),
+      hint: !profile.name.trim() || !profile.department.trim() || !profile.email.trim()
+        ? "이름, 학과, 학교 이메일을 모두 입력해주세요."
+        : "학교 이메일 형식이 올바르지 않습니다. (예: student@school.ac.kr)",
     },
     {
       valid: profile.roles.length > 0,
