@@ -240,6 +240,7 @@ export default function OnboardingPage() {
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+        coverImageName: "",
       });
 
       await updateMyProfileClient({

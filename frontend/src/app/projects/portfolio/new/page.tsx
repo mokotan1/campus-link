@@ -5,12 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileDropField } from "@/shared/components/file-drop-field";
 import { useAppData } from "@/shared/lib/app-data-context";
-
-const roleOptions = ["개발", "기획", "2D 아트", "3D 모델링", "애니메이션", "UI/UX"];
+import { roles as roleOptions } from "@/shared/constants";
 
 export default function NewPortfolioPage() {
   const router = useRouter();
-  const { addPortfolio } = useAppData();
+  const { createPortfolio, portfolioSaveState } = useAppData();
 
   const [title, setTitle] = useState("");
   const [role, setRole] = useState(roleOptions[0]);
@@ -19,18 +18,20 @@ export default function NewPortfolioPage() {
   const [link, setLink] = useState("");
   const [coverFileName, setCoverFileName] = useState<string | undefined>(undefined);
 
-  const isValid =
-    title.trim().length > 0 &&
-    summary.trim().length > 0 &&
-    content.trim().length > 0 &&
-    link.trim().length > 0;
+  const missingFields = [
+    title.trim().length === 0 && "제목",
+    summary.trim().length === 0 && "한 줄 소개",
+    content.trim().length === 0 && "본문",
+  ].filter((value): value is string => Boolean(value));
+
+  const isValid = missingFields.length === 0;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!isValid) return;
 
     try {
-      await addPortfolio({
+      await createPortfolio({
         title: title.trim(),
         role,
         summary: summary.trim(),
@@ -39,9 +40,9 @@ export default function NewPortfolioPage() {
         coverImageName: coverFileName,
       });
 
-      router.push("/projects");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "포트폴리오 등록에 실패했습니다.");
+      router.push("/projects?created=portfolio&tab=portfolio");
+    } catch {
+      // Error state is displayed from portfolioSaveState.
     }
   }
 
@@ -66,8 +67,8 @@ export default function NewPortfolioPage() {
           />
 
           <FileDropField
-            label="대표 이미지"
-            helperText="완성 컷, 스크린샷, 시연 GIF 등 대표 이미지를 올려주세요"
+            label="대표 이미지 (선택)"
+            helperText="완성 컷, 스크린샷, 시연 GIF 등 대표 이미지를 올려주세요. 파일이 없어도 외부 링크만으로 등록할 수 있어요."
             accept="image/*,video/*"
             onFileSelect={(file) => setCoverFileName(file?.name)}
           />
@@ -120,20 +121,29 @@ export default function NewPortfolioPage() {
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Link
-              href="/projects"
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
-            >
-              취소
-            </Link>
-            <button
-              className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
-              type="submit"
-              disabled={!isValid}
-            >
-              게시하기
-            </button>
+          {portfolioSaveState.error && (
+            <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{portfolioSaveState.error}</p>
+          )}
+
+          <div className="flex flex-col items-end gap-2">
+            {!isValid && (
+              <p className="text-sm font-bold text-rose-600">{missingFields.join(", ")} 입력이 필요해요.</p>
+            )}
+            <div className="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row sm:justify-end">
+              <Link
+                href="/projects"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
+              >
+                취소
+              </Link>
+              <button
+                className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
+                type="submit"
+                disabled={!isValid || portfolioSaveState.isSaving}
+              >
+                {portfolioSaveState.isSaving ? "게시 중…" : "게시하기"}
+              </button>
+            </div>
           </div>
         </form>
       </section>

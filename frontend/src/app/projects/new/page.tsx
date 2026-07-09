@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileDropField } from "@/shared/components/file-drop-field";
 import { useAppData } from "@/shared/lib/app-data-context";
+import { roles as roleOptions } from "@/shared/constants";
 import type { Campus, Project } from "@/shared/types";
 
-const roleOptions = ["개발", "기획", "2D 아트", "3D 모델링", "애니메이션", "UI/UX"];
 const statusOptions: Project["status"][] = ["모집중", "진행중", "완료"];
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const { addProject } = useAppData();
+  const { createProject, projectSaveState } = useAppData();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -23,14 +23,20 @@ export default function NewProjectPage() {
   const [tagsInput, setTagsInput] = useState("");
   const [coverFileName, setCoverFileName] = useState<string | undefined>(undefined);
 
-  const isValid = title.trim().length > 0 && summary.trim().length > 0 && content.trim().length > 0;
+  const missingFields = [
+    title.trim().length === 0 && "제목",
+    summary.trim().length === 0 && "한 줄 소개",
+    content.trim().length === 0 && "본문",
+  ].filter((value): value is string => Boolean(value));
+
+  const isValid = missingFields.length === 0;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (!isValid) return;
 
     try {
-      await addProject({
+      await createProject({
         title: title.trim(),
         campus,
         role,
@@ -44,9 +50,9 @@ export default function NewProjectPage() {
         coverImageName: coverFileName,
       });
 
-      router.push("/projects");
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "프로젝트 등록에 실패했습니다.");
+      router.push("/projects?created=project");
+    } catch {
+      // Error state is displayed from projectSaveState.
     }
   }
 
@@ -71,8 +77,8 @@ export default function NewProjectPage() {
           />
 
           <FileDropField
-            label="대표 이미지"
-            helperText="프로젝트를 대표하는 이미지나 콘셉트 아트를 올려주세요"
+            label="대표 이미지 (선택)"
+            helperText="프로젝트를 대표하는 이미지나 콘셉트 아트를 올려주세요. 올리지 않아도 등록할 수 있어요."
             accept="image/*"
             onFileSelect={(file) => setCoverFileName(file?.name)}
           />
@@ -147,20 +153,29 @@ export default function NewProjectPage() {
             </label>
           </div>
 
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Link
-              href="/projects"
-              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
-            >
-              취소
-            </Link>
-            <button
-              className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
-              type="submit"
-              disabled={!isValid}
-            >
-              등록하기
-            </button>
+          {projectSaveState.error && (
+            <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{projectSaveState.error}</p>
+          )}
+
+          <div className="flex flex-col items-end gap-2">
+            {!isValid && (
+              <p className="text-sm font-bold text-rose-600">{missingFields.join(", ")} 입력이 필요해요.</p>
+            )}
+            <div className="flex w-full flex-col-reverse gap-3 sm:w-auto sm:flex-row sm:justify-end">
+              <Link
+                href="/projects"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
+              >
+                취소
+              </Link>
+              <button
+                className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
+                type="submit"
+                disabled={!isValid || projectSaveState.isSaving}
+              >
+                {projectSaveState.isSaving ? "등록 중…" : "등록하기"}
+              </button>
+            </div>
           </div>
         </form>
       </section>

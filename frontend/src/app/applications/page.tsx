@@ -1,11 +1,20 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/shared/components/tag";
 import { useAppData } from "@/shared/lib/app-data-context";
 
+type Direction = "sent" | "received";
+
 export default function ApplicationsPage() {
   const { applications } = useAppData();
+  const [direction, setDirection] = useState<Direction>("sent");
+
+  const sent = useMemo(() => applications.filter((item) => item.direction === "sent"), [applications]);
+  const received = useMemo(() => applications.filter((item) => item.direction === "received"), [applications]);
+
+  const visible = direction === "sent" ? sent : received;
 
   return (
     <main className="min-h-screen bg-[#f6f8fb] pb-16 text-slate-950">
@@ -16,11 +25,37 @@ export default function ApplicationsPage() {
           <span className="text-sm font-extrabold text-slate-500">{applications.length}건</span>
         </div>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          프로젝트 페이지에서 지원하거나 제안하면 여기에 모여요.
+          프로젝트에 지원하거나 인재에게 제안하면 &quot;내가 보낸 지원&quot;에 모이고, 다른 학생이 내 프로젝트에 지원하거나
+          제안을 보내면 &quot;내가 받은 제안&quot;에서 확인할 수 있어요.
         </p>
 
-        <div className="mt-8 grid gap-3">
-          {applications.map((application) => (
+        <div className="mt-6 inline-flex rounded-lg border border-slate-200 bg-white p-1" role="tablist" aria-label="지원 현황 탭">
+          <button
+            className={`min-h-10 rounded-lg px-4 text-sm font-extrabold transition ${
+              direction === "sent" ? "bg-slate-950 text-white" : "text-slate-600 hover:text-slate-950"
+            }`}
+            type="button"
+            role="tab"
+            aria-selected={direction === "sent"}
+            onClick={() => setDirection("sent")}
+          >
+            내가 보낸 지원 ({sent.length})
+          </button>
+          <button
+            className={`min-h-10 rounded-lg px-4 text-sm font-extrabold transition ${
+              direction === "received" ? "bg-slate-950 text-white" : "text-slate-600 hover:text-slate-950"
+            }`}
+            type="button"
+            role="tab"
+            aria-selected={direction === "received"}
+            onClick={() => setDirection("received")}
+          >
+            내가 받은 제안 ({received.length})
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-3">
+          {visible.map((application) => (
             <article className="rounded-lg border border-slate-200 bg-white p-5" key={application.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -30,12 +65,22 @@ export default function ApplicationsPage() {
                 <StatusBadge status={application.status} />
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">{application.meta}</p>
+              {application.projectId && (
+                <Link
+                  href={`/projects/${application.projectId}`}
+                  className="mt-3 inline-block text-xs font-extrabold text-teal-700 underline underline-offset-2"
+                >
+                  프로젝트 보기
+                </Link>
+              )}
             </article>
           ))}
 
-          {applications.length === 0 && (
+          {visible.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-              <p className="text-sm font-bold text-slate-500">아직 지원하거나 제안한 내역이 없습니다.</p>
+              <p className="text-sm font-bold text-slate-500">
+                {direction === "sent" ? "아직 지원하거나 제안한 내역이 없습니다." : "아직 받은 제안이 없습니다."}
+              </p>
               <Link href="/projects" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
                 프로젝트 보러 가기
               </Link>
