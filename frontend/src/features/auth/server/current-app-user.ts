@@ -3,6 +3,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
+import { isAuthSessionError } from "./auth-session-error";
+
 export type AppUserRecord = {
   id: number;
   email: string;
@@ -17,6 +19,10 @@ export async function getCurrentAppUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
+    if (isAuthSessionError(error)) {
+      return null;
+    }
+
     throw new Error(error.message);
   }
 

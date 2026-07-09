@@ -1,11 +1,8 @@
 import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
+import { isAuthSessionError } from "@/features/auth/server/auth-session-error";
 import { bootstrapUser } from "@/features/auth/server/bootstrap-user";
 import { apiError, apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
-
-function isAuthSessionError(error: Error) {
-  return /session|jwt|token|unauthorized/i.test(error.message);
-}
 
 export async function POST() {
   try {
