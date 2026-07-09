@@ -40,6 +40,7 @@ create table if not exists public.projects (
   campus varchar(100),
   required_roles text[] not null default '{}',
   tools text[] not null default '{}',
+  cover_image_name varchar(255),
   expected_member_count integer,
   start_date date,
   end_date date,
@@ -55,6 +56,7 @@ create table if not exists public.portfolio_items (
   external_url varchar(500),
   role_in_work varchar(100),
   tools text[] not null default '{}',
+  cover_image_name varchar(255),
   created_at timestamptz not null default now()
 );
 
