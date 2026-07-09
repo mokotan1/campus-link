@@ -1,11 +1,11 @@
 export type TagTone = "default" | "teal" | "blue" | "amber" | "rose" | "green";
 
-export type Campus = "대명캠" | "성서캠";
+export type Campus = string;
 
-export type ProjectStatus = "모집중" | "진행중" | "완료";
+export type ProjectStatus = string;
 
 export type Project = {
-  id: string;
+  id: string | number;
   title: string;
   campus: Campus;
   /** 작성자 (projects.csv: author) */
@@ -33,7 +33,7 @@ export type Project = {
 };
 
 export type Talent = {
-  id: string;
+  id: string | number;
   name: string;
   studentNumber: string;
   campus: Campus;
@@ -50,7 +50,7 @@ export type Talent = {
   portfolio: string;
 };
 
-export type ApplicationStatus = "대기" | "수락" | "거절" | "취소";
+export type ApplicationStatus = string;
 
 export type Application = {
   id: number;
@@ -60,8 +60,8 @@ export type Application = {
   direction: "sent" | "received";
   status: ApplicationStatus;
   meta: string;
-  projectId?: string;
-  talentId?: string;
+  projectId?: string | number;
+  talentId?: string | number;
 };
 
 export type Portfolio = {

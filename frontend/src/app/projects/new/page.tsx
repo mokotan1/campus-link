@@ -35,21 +35,25 @@ export default function NewProjectPage() {
     event.preventDefault();
     if (!isValid) return;
 
-    await createProject({
-      title: title.trim(),
-      campus,
-      role,
-      status,
-      summary: summary.trim(),
-      content: content.trim(),
-      tagLabels: tagsInput
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
-      coverImageName: coverFileName,
-    });
+    try {
+      await createProject({
+        title: title.trim(),
+        campus,
+        role,
+        status,
+        summary: summary.trim(),
+        content: content.trim(),
+        tagLabels: tagsInput
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        coverImageName: coverFileName,
+      });
 
-    router.push("/projects?created=project");
+      router.push("/projects?created=project");
+    } catch {
+      // Error state is displayed from projectSaveState.
+    }
   }
 
   return (

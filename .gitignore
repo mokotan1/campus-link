@@ -64,3 +64,11 @@ temp/
 
 # Local tool runtimes
 .tools/
+
+# Private AI agent files
+.agents/private/
+.agents/*.private.md
+.codex/skills/private/
+.codex/skills/*.private.md
+docs/agents/private/
+docs/agents/*.private.md

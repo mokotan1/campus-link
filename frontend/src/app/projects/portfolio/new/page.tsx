@@ -30,16 +30,20 @@ export default function NewPortfolioPage() {
     event.preventDefault();
     if (!isValid) return;
 
-    await createPortfolio({
-      title: title.trim(),
-      role,
-      summary: summary.trim(),
-      content: content.trim(),
-      link: link.trim() || undefined,
-      coverImageName: coverFileName,
-    });
+    try {
+      await createPortfolio({
+        title: title.trim(),
+        role,
+        summary: summary.trim(),
+        content: content.trim(),
+        link: link.trim() || undefined,
+        coverImageName: coverFileName,
+      });
 
-    router.push("/projects?created=portfolio&tab=portfolio");
+      router.push("/projects?created=portfolio&tab=portfolio");
+    } catch {
+      // Error state is displayed from portfolioSaveState.
+    }
   }
 
   return (

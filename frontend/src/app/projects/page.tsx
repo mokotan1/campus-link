@@ -64,25 +64,33 @@ function ProjectsPageContent() {
   }, [campusFilter, projects, query, roleFilter, statusFilter]);
 
   async function handleApplyToProject(project: (typeof projects)[number]) {
-    await createApplication({
-      title: project.title,
-      type: "지원",
-      meta: `${project.role} 역할 · ${project.campus}`,
-      projectId: project.id,
-    });
-    setJustApplied(project.title);
-    window.setTimeout(() => setJustApplied((current) => (current === project.title ? null : current)), 2500);
+    try {
+      await createApplication({
+        title: project.title,
+        type: "지원",
+        meta: `${project.role} 역할 · ${project.campus}`,
+        projectId: project.id,
+      });
+      setJustApplied(project.title);
+      window.setTimeout(() => setJustApplied((current) => (current === project.title ? null : current)), 2500);
+    } catch {
+      // Error state is displayed from applicationSaveState.
+    }
   }
 
   async function handleProposeToTalent(talent: (typeof talents)[number]) {
-    await createApplication({
-      title: talent.name,
-      type: "제안",
-      meta: `${talent.role} · ${talent.availability}`,
-      talentId: talent.id,
-    });
-    setJustApplied(talent.name);
-    window.setTimeout(() => setJustApplied((current) => (current === talent.name ? null : current)), 2500);
+    try {
+      await createApplication({
+        title: talent.name,
+        type: "제안",
+        meta: `${talent.role} · ${talent.availability}`,
+        talentId: talent.id,
+      });
+      setJustApplied(talent.name);
+      window.setTimeout(() => setJustApplied((current) => (current === talent.name ? null : current)), 2500);
+    } catch {
+      // Error state is displayed from applicationSaveState.
+    }
   }
 
   function clearCreatedBanner() {

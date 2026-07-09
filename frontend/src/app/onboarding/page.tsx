@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
-import { FileDropField } from "@/shared/components/file-drop-field";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
-import { useAppData } from "@/shared/lib/app-data-context";
+import { defaultOnboardingProfile, useAppData } from "@/shared/lib/app-data-context";
+import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
+import { AuthPanel } from "@/features/auth/components/auth-panel";
+import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
+import type { ProfileRecord } from "@/features/profile/types";
+import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
+import { createClient } from "@/lib/supabase/client";
 import type { Campus } from "@/shared/types";
+
+type AuthStateChangeHandler = Parameters<
+  ReturnType<typeof createClient>["auth"]["onAuthStateChange"]
+>[0];
 
 const stepTitles = ["기본 정보", "역할 선택", "작업물 검증", "협업 상태", "맞춤 추천"];
 const stepDescriptions = [
@@ -17,10 +26,183 @@ const stepDescriptions = [
   "입력한 정보로 어울리는 팀을 먼저 보여줍니다.",
 ];
 
+function parsePortfolioThumbnail(description: string) {
+  const prefix = "썸네일: ";
+
+  if (description.startsWith(prefix)) {
+    return description.slice(prefix.length).trim();
+  }
+
+  return "";
+}
+
+function mapProfileRecordToOnboardingState(data: ProfileRecord, fallbackEmail: string) {
+  return {
+    name: data.displayName,
+    campus: (data.campus || "대명캠") as Campus,
+    department: data.department,
+    grade: data.grade || "1학년",
+    email: data.email || fallbackEmail,
+    roles: data.roleTags,
+    tools: data.techStack,
+    availabilityStatus: data.availabilityStatus || "바로 가능",
+    collaborationType: data.collaborationType || "졸업작품",
+    weeklyHours: data.weeklyHours || "4-7시간",
+    completed: data.onboardingCompleted,
+  };
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
-  const { profile, setProfile, saveProfile, profileSaveState } = useAppData();
+  const { profile, setProfile } = useAppData();
+  const supabase = useMemo(() => createClient(), []);
   const [step, setStep] = useState(0);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string>("");
+  const [profileLoadMessage, setProfileLoadMessage] = useState("");
+  const [portfolioExternalUrl, setPortfolioExternalUrl] = useState("");
+  const [portfolioThumbnailUrl, setPortfolioThumbnailUrl] = useState("");
+  const [portfolioRoleInWork, setPortfolioRoleInWork] = useState("");
+
+  const resetLocalOnboardingState = useCallback(() => {
+    setStep(0);
+    setSaveMessage("");
+    setProfileLoadMessage("");
+    setPortfolioExternalUrl("");
+    setPortfolioThumbnailUrl("");
+    setPortfolioRoleInWork("");
+    setProfile(defaultOnboardingProfile);
+  }, [setProfile]);
+
+  const prepareForSignedInUser = useCallback(
+    (email: string) => {
+      setStep(0);
+      setSaveMessage("");
+      setProfileLoadMessage("");
+      setPortfolioExternalUrl("");
+      setPortfolioThumbnailUrl("");
+      setPortfolioRoleInWork("");
+      setProfile({ ...defaultOnboardingProfile, email });
+    },
+    [setProfile],
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    async function syncSession() {
+      const { data } = await supabase.auth.getSession();
+
+      if (!active) {
+        return;
+      }
+
+      const email = data.session?.user.email ?? null;
+      setSessionEmail(email);
+
+      if (email) {
+        prepareForSignedInUser(email);
+      } else {
+        resetLocalOnboardingState();
+      }
+
+      setLoadingSession(false);
+    }
+
+    void syncSession();
+
+    const onAuthStateChange: AuthStateChangeHandler = async (_event, session) => {
+      const email = session?.user.email ?? null;
+      setSessionEmail(email);
+      setLoadingSession(false);
+
+      if (email) {
+        prepareForSignedInUser(email);
+      } else {
+        resetLocalOnboardingState();
+      }
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(onAuthStateChange);
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [prepareForSignedInUser, resetLocalOnboardingState, setProfile, supabase]);
+
+  useEffect(() => {
+    if (!sessionEmail) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadSavedProfile() {
+      setLoadingProfile(true);
+      setProfileLoadMessage("");
+      const email = sessionEmail;
+
+      try {
+        let data;
+
+        try {
+          data = await getMyProfileClient();
+        } catch {
+          await bootstrapAppUserClient();
+          data = await getMyProfileClient();
+        }
+
+        if (!active) {
+          return;
+        }
+
+        setStep(data.onboardingStep);
+        setProfile(mapProfileRecordToOnboardingState(data, email || ""));
+
+        try {
+          const portfolios = await listMyPortfoliosClient();
+
+          if (!active) {
+            return;
+          }
+
+          if (portfolios.length) {
+            const portfolio = portfolios[0];
+
+            setPortfolioExternalUrl(portfolio.externalUrl);
+            setPortfolioThumbnailUrl(parsePortfolioThumbnail(portfolio.description));
+            setPortfolioRoleInWork(portfolio.roleInWork);
+          }
+        } catch {
+          // Portfolio hydration is optional for resume.
+        }
+      } catch {
+        if (!active) {
+          return;
+        }
+
+        setProfileLoadMessage("저장된 프로필을 불러오지 못했습니다. 기본값으로 온보딩을 시작합니다.");
+        setStep(0);
+        setProfile({ ...defaultOnboardingProfile, email: email || "" });
+      } finally {
+        if (active) {
+          setLoadingProfile(false);
+        }
+      }
+    }
+
+    void loadSavedProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [sessionEmail, setProfile]);
 
   function toggleRole(role: string) {
     setProfile({
@@ -29,29 +211,62 @@ export default function OnboardingPage() {
     });
   }
 
-  // 각 단계별 필수값 검증. 통과하지 못하면 "다음" 버튼이 비활성화된다.
-  const stepValidation: { valid: boolean; hint: string }[] = [
-    {
-      valid: profile.name.trim().length > 0 && profile.department.trim().length > 0 && profile.email.trim().length > 0,
-      hint: "이름, 학과, 학교 이메일을 모두 입력해주세요.",
-    },
-    {
-      valid: profile.roles.length > 0,
-      hint: "역할을 최소 1개 이상 선택해주세요.",
-    },
-    { valid: true, hint: "" },
-    {
-      valid: Boolean(profile.availabilityStatus) && Boolean(profile.collaborationType) && Boolean(profile.weeklyHours),
-      hint: "협업 상태, 원하는 협업, 주당 가능 시간을 선택해주세요.",
-    },
-    { valid: true, hint: "" },
-  ];
-
-  const currentStepValid = stepValidation[step].valid;
-
   async function finishOnboarding() {
-    await saveProfile({ ...profile, completed: true });
-    router.push("/projects");
+    setSaving(true);
+    setSaveMessage("프로필 저장 중입니다.");
+
+    try {
+      const existingProfile = await getMyProfileClient();
+
+      const collaborationStatus =
+        profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
+
+      const trimmedExternalUrl = portfolioExternalUrl.trim();
+      const trimmedRoleInWork = portfolioRoleInWork.trim();
+
+      if (!trimmedExternalUrl || !trimmedRoleInWork) {
+        setStep(2);
+        throw new Error("포트폴리오 링크와 작업물 내 역할을 입력해야 온보딩을 완료할 수 있습니다.");
+      }
+
+      await savePortfolioClient({
+        title: profile.name.trim() || "대표 작업물",
+        description: portfolioThumbnailUrl.trim()
+          ? `썸네일: ${portfolioThumbnailUrl.trim()}`
+          : "",
+        externalUrl: trimmedExternalUrl,
+        roleInWork: trimmedRoleInWork,
+        tools: profile.tools
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+        coverImageName: "",
+      });
+
+      await updateMyProfileClient({
+        displayName: profile.name,
+        campus: profile.campus,
+        studentId: existingProfile.studentId,
+        department: profile.department,
+        grade: profile.grade,
+        bio: existingProfile.bio,
+        roleTags: profile.roles,
+        techStack: profile.tools,
+        availabilityStatus: profile.availabilityStatus,
+        collaborationType: profile.collaborationType,
+        weeklyHours: profile.weeklyHours,
+        collaborationStatus,
+        onboardingCompleted: true,
+      });
+
+      setProfile({ ...profile, completed: true });
+      setSaveMessage("프로필 저장이 완료되었습니다. 프로젝트 화면으로 이동합니다.");
+      router.push("/projects");
+    } catch (error) {
+      setSaveMessage(error instanceof Error ? error.message : "프로필 저장에 실패했습니다.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -63,6 +278,28 @@ export default function OnboardingPage() {
           5단계를 모두 마치면 자동으로 추천 프로젝트 페이지로 이동합니다.
         </p>
 
+        {loadingSession || (sessionEmail && loadingProfile) ? (
+          <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6 text-sm font-bold text-slate-500 shadow-sm">
+            {loadingSession ? "로그인 상태를 확인하고 있습니다." : "저장된 프로필을 불러오고 있습니다."}
+          </div>
+        ) : null}
+
+        {!loadingSession && !loadingProfile && !sessionEmail ? (
+          <div className="mt-8 grid gap-6">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+              온보딩 내용을 저장하려면 먼저 로그인 또는 회원가입이 필요합니다.
+            </div>
+            <AuthPanel />
+          </div>
+        ) : null}
+
+        {!loadingSession && !loadingProfile && sessionEmail && profileLoadMessage ? (
+          <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-bold text-slate-600">
+            {profileLoadMessage}
+          </div>
+        ) : null}
+
+        {!loadingSession && !loadingProfile && sessionEmail ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
             <div>
@@ -76,6 +313,10 @@ export default function OnboardingPage() {
           </div>
           <div className="h-2 bg-slate-100" aria-hidden="true">
             <div className="h-full bg-teal-700 transition-all" style={{ width: `${((step + 1) / 5) * 100}%` }} />
+          </div>
+
+          <div className="border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-500">
+            현재 로그인 계정: <span className="text-slate-900">{sessionEmail}</span>
           </div>
 
           <form className="p-5" onSubmit={(event) => event.preventDefault()}>
@@ -128,10 +369,10 @@ export default function OnboardingPage() {
                   학교 이메일
                   <input
                     className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
-                    placeholder="student@school.ac.kr"
+                    placeholder="student@kmu.ac.kr"
                     type="email"
-                    value={profile.email}
-                    onChange={(event) => setProfile({ ...profile, email: event.target.value })}
+                    value={sessionEmail ?? ""}
+                    readOnly
                   />
                 </label>
               </div>
@@ -172,18 +413,28 @@ export default function OnboardingPage() {
 
             {step === 2 && (
               <div className="grid gap-4">
-                <FileDropField
-                  label="대표 작업물"
-                  helperText="대표 이미지, 영상 썸네일, 시연 GIF를 올리는 영역"
-                  accept="image/*,video/*"
-                />
+                <p className="text-sm leading-6 text-slate-500">
+                  MVP에서는 파일 업로드 대신 외부 포트폴리오 링크만 등록합니다.
+                </p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-extrabold text-slate-700">
-                    외부 링크
+                  <label className="grid gap-2 text-sm font-extrabold text-slate-700 sm:col-span-2">
+                    외부 포트폴리오 링크
                     <input
                       className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
                       placeholder="ArtStation, GitHub, YouTube"
                       type="url"
+                      value={portfolioExternalUrl}
+                      onChange={(event) => setPortfolioExternalUrl(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-extrabold text-slate-700">
+                    대표 썸네일 URL
+                    <input
+                      className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
+                      placeholder="https://example.com/thumbnail.jpg"
+                      type="url"
+                      value={portfolioThumbnailUrl}
+                      onChange={(event) => setPortfolioThumbnailUrl(event.target.value)}
                     />
                   </label>
                   <label className="grid gap-2 text-sm font-extrabold text-slate-700">
@@ -191,6 +442,8 @@ export default function OnboardingPage() {
                     <input
                       className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:bg-white focus:ring-4 focus:ring-teal-100"
                       placeholder="예: 캐릭터 원화, Unity 구현"
+                      value={portfolioRoleInWork}
+                      onChange={(event) => setPortfolioRoleInWork(event.target.value)}
                     />
                   </label>
                 </div>
@@ -263,9 +516,13 @@ export default function OnboardingPage() {
             )}
           </form>
 
-          {!currentStepValid && (
-            <p className="border-t border-slate-200 px-5 pt-4 text-sm font-bold text-rose-600">{stepValidation[step].hint}</p>
-          )}
+          {saveMessage ? (
+            <div className="px-5 pb-5">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
+                {saveMessage}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-3 border-t border-slate-200 p-5 sm:flex-row sm:justify-between">
             <button
@@ -279,20 +536,20 @@ export default function OnboardingPage() {
             <button
               className="min-h-11 rounded-lg bg-teal-700 px-5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
               type="button"
-              disabled={!currentStepValid || profileSaveState.isSaving}
+              disabled={saving || loadingProfile}
               onClick={() => {
-                if (!currentStepValid) return;
                 if (step === 4) {
-                  finishOnboarding();
+                  void finishOnboarding();
                   return;
                 }
                 setStep((current) => Math.min(4, current + 1));
               }}
             >
-              {step === 4 ? (profileSaveState.isSaving ? "저장 중…" : "프로젝트로 이동") : "다음"}
+              {step === 4 ? (saving ? "저장 중..." : "프로필 저장 후 이동") : "다음"}
             </button>
           </div>
         </div>
+        ) : null}
       </section>
     </main>
   );

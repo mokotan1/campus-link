@@ -2,7 +2,9 @@
 // 하드코딩된 더미 인재 데이터를 대체하기 위한 실제 학생 데이터입니다.
 import type { Talent } from "@/shared/types";
 
-export const studentTalents: Talent[] = [
+export type StudentTalent = Pick<Talent, "id" | "name" | "campus" | "role" | "tools" | "availability" | "portfolio">;
+
+export const studentTalents: StudentTalent[] = [
   {
     id: 1,
     name: "안예준",

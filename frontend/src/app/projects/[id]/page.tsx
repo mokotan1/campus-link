@@ -41,13 +41,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const applied = hasApplied({ projectId: project.id, type: "지원" });
 
   async function handleApply() {
-    await createApplication({
-      title: project!.title,
-      type: "지원",
-      meta: `${project!.role} 역할 · ${project!.campus}`,
-      projectId: project!.id,
-    });
-    setJustApplied(true);
+    try {
+      await createApplication({
+        title: project!.title,
+        type: "지원",
+        meta: `${project!.role} 역할 · ${project!.campus}`,
+        projectId: project!.id,
+      });
+      setJustApplied(true);
+    } catch {
+      // Error state is displayed from applicationSaveState.
+    }
   }
 
   return (

@@ -1,16 +1,24 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { initialApplications, initialProjects, initialTalents } from "@/shared/constants";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { initialTalents } from "@/shared/constants";
 import type { Application, OnboardingProfile, Portfolio, Project, Talent } from "@/shared/types";
 
-const defaultProfile: OnboardingProfile = {
+export const defaultOnboardingProfile: OnboardingProfile = {
   name: "",
   campus: "대명캠",
   department: "",
   grade: "1학년",
   email: "",
-  roles: [],
+  roles: ["개발", "2D 아트"],
   tools: "",
   availabilityStatus: "바로 가능",
   collaborationType: "졸업작품",
@@ -42,16 +50,10 @@ type NewApplicationInput = {
   title: string;
   type: Application["type"];
   meta: string;
-  projectId?: string;
-  talentId?: string;
+  projectId?: string | number;
+  talentId?: string | number;
 };
 
-/**
- * 저장 상태(저장 중 / 실패)를 함수별로 추적한다.
- * 지금은 useState 기반이지만, 실제 API(fetch/Supabase)로 교체할 때
- * saveProfile / createProject / createPortfolio / createApplication
- * 함수 내부만 바꾸면 되도록 인터페이스를 맞춰뒀다.
- */
 type SaveState = {
   isSaving: boolean;
   error: string | null;
@@ -59,43 +61,180 @@ type SaveState = {
 
 const idleState: SaveState = { isSaving: false, error: null };
 
+type ApiSuccess<T> = {
+  success: true;
+  data: T;
+};
+
+type ApiFailure = {
+  success: false;
+  message: string;
+};
+
+type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
+
+type ProjectApiRecord = {
+  id: number;
+  title: string;
+  summary: string;
+  description: string;
+  campus: string;
+  requiredRoles: string[];
+  tools: string[];
+  recruitmentStatus: string;
+  createdAt: string;
+  coverImageName: string | null;
+};
+
+type PortfolioApiRecord = {
+  id: number;
+  title: string;
+  description: string;
+  externalUrl: string;
+  roleInWork: string;
+  createdAt: string;
+  coverImageName: string | null;
+};
+
+type ApplicationApiRecord = {
+  id: number;
+  projectId: number;
+  message: string;
+  status: string;
+  targetRole: string;
+  project: {
+    title: string;
+    campus: string;
+  };
+};
+
 type AppDataContextValue = {
   profile: OnboardingProfile;
   setProfile: (profile: OnboardingProfile) => void;
   saveProfile: (profile: OnboardingProfile) => Promise<void>;
   profileSaveState: SaveState;
-
   projects: Project[];
   createProject: (input: NewProjectInput) => Promise<void>;
   projectSaveState: SaveState;
-
   talents: Talent[];
-
   portfolios: Portfolio[];
   createPortfolio: (input: NewPortfolioInput) => Promise<void>;
   portfolioSaveState: SaveState;
-
   applications: Application[];
   createApplication: (input: NewApplicationInput) => Promise<void>;
   applicationSaveState: SaveState;
-  hasApplied: (input: { projectId?: string; talentId?: string; type: Application["type"] }) => boolean;
+  hasApplied: (input: { projectId?: string | number; talentId?: string | number; type: Application["type"] }) => boolean;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
+function mapProjectStatus(status: string) {
+  if (status === "RECRUITING") {
+    return "모집중";
+  }
+
+  if (status === "CLOSED") {
+    return "완료";
+  }
+
+  return status || "모집중";
+}
+
+function mapApplicationStatus(status: string) {
+  if (status === "PENDING") {
+    return "대기";
+  }
+
+  if (status === "ACCEPTED") {
+    return "수락";
+  }
+
+  if (status === "REJECTED") {
+    return "거절";
+  }
+
+  if (status === "CANCELED") {
+    return "취소";
+  }
+
+  return status || "대기";
+}
+
+function mapProjectRecord(record: ProjectApiRecord): Project {
+  const tags = [...record.requiredRoles, ...record.tools].filter(Boolean).map((label, index) => ({
+    label,
+    tone: index < record.requiredRoles.length ? ("blue" as const) : ("default" as const),
+  }));
+
+  return {
+    id: String(record.id),
+    title: record.title,
+    campus: record.campus || "캠퍼스 미정",
+    author: "Campus Link",
+    category: record.requiredRoles[0] ?? "모집 역할 협의",
+    recruitingRoles: record.requiredRoles,
+    role: record.requiredRoles[0] ?? "모집 역할 협의",
+    maxMembers: 0,
+    currentMembers: 0,
+    deadline: "",
+    createdAt: record.createdAt,
+    status: mapProjectStatus(record.recruitmentStatus),
+    summary: record.summary,
+    content: record.description || record.summary,
+    tags,
+    verified: "실제 API 데이터",
+    action: "지원하기",
+    accent: (["blue", "amber", "green"] as const)[record.id % 3],
+    coverImageName: record.coverImageName ?? undefined,
+  };
+}
+
+function mapPortfolioRecord(record: PortfolioApiRecord): Portfolio {
+  return {
+    id: record.id,
+    title: record.title,
+    role: record.roleInWork || "역할 미입력",
+    summary: record.description || "설명 없음",
+    content: record.description || "설명 없음",
+    link: record.externalUrl || undefined,
+    coverImageName: record.coverImageName ?? undefined,
+    createdAt: record.createdAt,
+  };
+}
+
+function mapApplicationRecord(record: ApplicationApiRecord): Application {
+  return {
+    id: record.id,
+    title: record.project.title,
+    type: "지원",
+    direction: "sent",
+    status: mapApplicationStatus(record.status),
+    meta: [record.targetRole, record.project.campus, record.message].filter(Boolean).join(" · "),
+    projectId: String(record.projectId),
+  };
+}
+
+async function readApiResponse<T>(response: Response) {
+  const payload = (await response.json()) as ApiResponse<T>;
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.success ? "요청에 실패했습니다." : payload.message);
+  }
+
+  return payload.data;
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<OnboardingProfile>(defaultProfile);
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+  const [profile, setProfile] = useState<OnboardingProfile>(defaultOnboardingProfile);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [talents] = useState<Talent[]>(initialTalents);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [applications, setApplications] = useState<Application[]>(initialApplications);
-
+  const [applications, setApplications] = useState<Application[]>([]);
   const [profileSaveState, setProfileSaveState] = useState<SaveState>(idleState);
   const [projectSaveState, setProjectSaveState] = useState<SaveState>(idleState);
   const [portfolioSaveState, setPortfolioSaveState] = useState<SaveState>(idleState);
   const [applicationSaveState, setApplicationSaveState] = useState<SaveState>(idleState);
 
-  // 나중에 fetch("/api/profile", { method: "PUT", body: ... }) 로 교체할 자리.
   const saveProfile = useCallback(async (nextProfile: OnboardingProfile) => {
     setProfileSaveState({ isSaving: true, error: null });
     try {
@@ -106,85 +245,137 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // 나중에 fetch("/api/projects", { method: "POST", body: ... }) 로 교체할 자리.
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialProjects() {
+      try {
+        const records = await readApiResponse<ProjectApiRecord[]>(
+          await fetch("/api/projects", { cache: "no-store" })
+        );
+
+        if (active) {
+          setProjects(records.map(mapProjectRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadInitialPortfolios() {
+      try {
+        const records = await readApiResponse<PortfolioApiRecord[]>(
+          await fetch("/api/portfolios", { cache: "no-store" })
+        );
+
+        if (active) {
+          setPortfolios(records.map(mapPortfolioRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadInitialApplications() {
+      try {
+        const records = await readApiResponse<ApplicationApiRecord[]>(
+          await fetch("/api/applications/me", { cache: "no-store" })
+        );
+
+        if (active) {
+          setApplications(records.map(mapApplicationRecord));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    void loadInitialProjects();
+    void loadInitialPortfolios();
+    void loadInitialApplications();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const createProject = useCallback(async (input: NewProjectInput) => {
     setProjectSaveState({ isSaving: true, error: null });
     try {
-      setProjects((current) => {
-        const nextNumber = current.length + 1;
-        const id = `PRJ${String(nextNumber).padStart(3, "0")}-${Date.now().toString().slice(-4)}`;
-        const accent: Project["accent"] = (["blue", "amber", "green"] as const)[nextNumber % 3];
+      const record = await readApiResponse<ProjectApiRecord>(
+        await fetch("/api/projects", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: input.title,
+            summary: input.summary,
+            description: input.content,
+            projectType: "GENERAL",
+            collaborationMode: "MIXED",
+            recruitmentStatus: input.status === "완료" ? "CLOSED" : "RECRUITING",
+            campus: input.campus,
+            requiredRoles: [input.role],
+            tools: input.tagLabels,
+            expectedMemberCount: null,
+            startDate: "",
+            endDate: "",
+            coverImageName: input.coverImageName ?? "",
+          }),
+        })
+      );
 
-        const newProject: Project = {
-          id,
-          title: input.title,
-          campus: input.campus,
-          author: "나",
-          category: input.role,
-          recruitingRoles: [input.role],
-          role: input.role,
-          maxMembers: 1,
-          currentMembers: 0,
-          deadline: "",
-          createdAt: new Date().toISOString().slice(0, 10),
-          status: input.status,
-          summary: input.summary,
-          content: input.content,
-          tags: input.tagLabels.map((label) => ({ label, tone: "blue" as const })),
-          verified: "등록 직후 · 검증 대기",
-          action: "지원하기",
-          accent,
-          coverImageName: input.coverImageName,
-        };
-
-        return [newProject, ...current];
-      });
+      setProjects((current) => [mapProjectRecord(record), ...current]);
       setProjectSaveState({ isSaving: false, error: null });
-    } catch {
-      setProjectSaveState({ isSaving: false, error: "프로젝트를 등록하지 못했습니다. 다시 시도해주세요." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "프로젝트를 등록하지 못했습니다. 다시 시도해주세요.";
+      setProjectSaveState({ isSaving: false, error: message });
+      throw error;
     }
   }, []);
 
-  // 나중에 fetch("/api/portfolios", { method: "POST", body: ... }) 로 교체할 자리.
   const createPortfolio = useCallback(async (input: NewPortfolioInput) => {
     setPortfolioSaveState({ isSaving: true, error: null });
     try {
-      setPortfolios((current) => {
-        const nextId = current.length ? Math.max(...current.map((item) => item.id)) + 1 : 1;
-
-        return [
-          {
-            id: nextId,
-            title: input.title,
-            role: input.role,
-            summary: input.summary,
-            content: input.content,
-            link: input.link,
-            coverImageName: input.coverImageName,
-            createdAt: new Date().toISOString(),
+      const record = await readApiResponse<PortfolioApiRecord>(
+        await fetch("/api/portfolios", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-          ...current,
-        ];
-      });
+          body: JSON.stringify({
+            title: input.title,
+            description: input.content,
+            externalUrl: input.link,
+            roleInWork: input.role,
+            tools: [],
+            coverImageName: input.coverImageName ?? "",
+          }),
+        })
+      );
+
+      setPortfolios((current) => [mapPortfolioRecord(record), ...current]);
       setPortfolioSaveState({ isSaving: false, error: null });
-    } catch {
-      setPortfolioSaveState({ isSaving: false, error: "포트폴리오를 등록하지 못했습니다. 다시 시도해주세요." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "포트폴리오를 등록하지 못했습니다. 다시 시도해주세요.";
+      setPortfolioSaveState({ isSaving: false, error: message });
+      throw error;
     }
   }, []);
 
   const hasApplied = useCallback(
-    ({ projectId, talentId, type }: { projectId?: string; talentId?: string; type: Application["type"] }) => {
+    ({ projectId, talentId, type }: { projectId?: string | number; talentId?: string | number; type: Application["type"] }) => {
       return applications.some((item) => {
         if (item.direction !== "sent" || item.type !== type) return false;
-        if (projectId !== undefined) return item.projectId === projectId;
-        if (talentId !== undefined) return item.talentId === talentId;
+        if (projectId !== undefined) return String(item.projectId) === String(projectId);
+        if (talentId !== undefined) return String(item.talentId) === String(talentId);
         return false;
       });
     },
     [applications],
   );
 
-  // 나중에 fetch("/api/applications", { method: "POST", body: ... }) 로 교체할 자리.
   const createApplication = useCallback(
     async (input: NewApplicationInput) => {
       setApplicationSaveState({ isSaving: true, error: null });
@@ -194,25 +385,51 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setApplications((current) => [
-          {
-            id: Date.now(),
-            title: input.title,
-            type: input.type,
-            direction: "sent",
-            status: "대기",
-            meta: input.meta,
-            projectId: input.projectId,
-            talentId: input.talentId,
-          },
-          ...current,
-        ]);
+        const project = input.projectId
+          ? projects.find((item) => String(item.id) === String(input.projectId))
+          : undefined;
+
+        if (input.type === "제안" || !input.projectId || !project) {
+          setApplications((current) => [
+            {
+              id: Date.now(),
+              title: input.title,
+              type: input.type,
+              direction: "sent",
+              status: "대기",
+              meta: input.meta,
+              projectId: input.projectId,
+              talentId: input.talentId,
+            },
+            ...current,
+          ]);
+          setApplicationSaveState({ isSaving: false, error: null });
+          return;
+        }
+
+        const record = await readApiResponse<ApplicationApiRecord>(
+          await fetch("/api/applications", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              projectId: Number(input.projectId),
+              targetRole: project.role,
+              message: `${input.title}에 ${project.role} 역할로 참여하고 싶습니다.`,
+            }),
+          })
+        );
+
+        setApplications((current) => [mapApplicationRecord(record), ...current]);
         setApplicationSaveState({ isSaving: false, error: null });
-      } catch {
-        setApplicationSaveState({ isSaving: false, error: "지원/제안을 등록하지 못했습니다. 다시 시도해주세요." });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "지원/제안을 등록하지 못했습니다. 다시 시도해주세요.";
+        setApplicationSaveState({ isSaving: false, error: message });
+        throw error;
       }
     },
-    [hasApplied],
+    [hasApplied, projects],
   );
 
   const value = useMemo(
@@ -248,7 +465,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createApplication,
       applicationSaveState,
       hasApplied,
-    ],
+    ]
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
