@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileDropField } from "@/shared/components/file-drop-field";
-import { useAppData } from "@/shared/lib/app-data-context";
+import { useProjectMutations } from "@/features/projects/hooks/use-project-mutations";
 import { roles as roleOptions } from "@/shared/constants";
 import type { Campus, Project } from "@/shared/types";
 
@@ -12,7 +12,7 @@ const statusOptions: Project["status"][] = ["모집중", "진행중", "완료"];
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const { createProject, projectSaveState } = useAppData();
+  const { createProject, projectSaveState } = useProjectMutations();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");

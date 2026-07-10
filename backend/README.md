@@ -2,6 +2,14 @@
 
 이 폴더는 Spring Boot 백엔드를 담당합니다.
 
+## MVP runtime boundary
+
+The current MVP runs as `frontend/` (Next.js) against Supabase Auth and Supabase Postgres.
+`frontend/supabase/migrations/` is the only authoritative MVP schema history.
+`backend/` and its Flyway migrations are retained only for Phase 2 evaluation and are not run by Docker Compose or CI.
+
+자세한 내용은 `backend/PHASE_2_NOT_IN_MVP.md`를 확인합니다.
+
 ## 이 폴더에 들어가는 것
 
 - REST API
@@ -30,11 +38,7 @@ gradlew.bat build
 ./gradlew build
 ```
 
-레포 루트에서 Docker로 실행할 수도 있습니다.
-
-```bash
-docker compose up backend db
-```
+레포 루트의 `docker-compose.yml`은 `frontend` 서비스만 정의합니다. `backend`와 `db`는 Docker Compose로 실행할 수 없으며, 로컬에서 Gradle로만 직접 실행합니다.
 
 ## 로컬 주소
 

@@ -4,12 +4,12 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FileDropField } from "@/shared/components/file-drop-field";
-import { useAppData } from "@/shared/lib/app-data-context";
+import { usePortfolioMutations } from "@/features/portfolios/hooks/use-portfolio-mutations";
 import { roles as roleOptions } from "@/shared/constants";
 
 export default function NewPortfolioPage() {
   const router = useRouter();
-  const { createPortfolio, portfolioSaveState } = useAppData();
+  const { createPortfolio, portfolioSaveState } = usePortfolioMutations();
 
   const [title, setTitle] = useState("");
   const [role, setRole] = useState(roleOptions[0]);

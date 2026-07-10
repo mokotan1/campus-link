@@ -2,6 +2,14 @@
 
 Campus Link는 대명캠의 아트/영상/애니메이션 인력과 성서캠의 개발/기획 인력을 연결하는 캠퍼스 협업 매칭 서비스입니다.
 
+## MVP runtime boundary
+
+The current MVP runs as `frontend/` (Next.js) against Supabase Auth and Supabase Postgres.
+`frontend/supabase/migrations/` is the only authoritative MVP schema history.
+`backend/` and its Flyway migrations are retained only for Phase 2 evaluation and are not run by Docker Compose or CI.
+
+자세한 내용은 `backend/PHASE_2_NOT_IN_MVP.md`를 확인합니다.
+
 ## 레포지토리 구조
 
 ```txt
@@ -25,17 +33,14 @@ campus-link/
 
 | 폴더 | 명령어 | 목적 |
 | --- | --- | --- |
-| 레포 루트 | `docker compose up --build` | 프론트엔드/백엔드/DB를 한 번에 실행 |
+| 레포 루트 | `docker compose up --build` | Supabase Cloud에 연결되는 프론트엔드만 실행 |
 | 레포 루트 | `docker compose down` | Docker 개발환경 종료 |
-| 레포 루트 | `docker compose down -v` | Docker 개발환경 종료 및 DB 데이터 초기화 |
 | `frontend` | `npm install` | 프론트엔드 의존성 설치 |
 | `frontend` | `npm run dev` | 3000번 포트에서 Next.js 개발 서버 실행 |
 | `frontend` | `npm run build` | 프론트엔드 프로덕션 빌드 |
 | `frontend` | `npm run lint` | 프론트엔드 린트 검사 |
-| `backend` | `gradlew.bat bootRun` | Windows에서 Spring Boot 백엔드 실행 |
-| `backend` | `./gradlew bootRun` | macOS/Linux에서 Spring Boot 백엔드 실행 |
-| `backend` | `gradlew.bat test` | Windows에서 백엔드 테스트 실행 |
-| `backend` | `./gradlew test` | macOS/Linux에서 백엔드 테스트 실행 |
+
+`backend`는 MVP 실행 경로에 포함되지 않습니다. 자세한 내용은 `backend/PHASE_2_NOT_IN_MVP.md`를 확인합니다.
 
 ## MVP 목표
 
@@ -52,7 +57,7 @@ campus-link/
 
 ### Docker Compose 권장
 
-팀원별 Node.js, JDK, PostgreSQL 버전 차이를 줄이기 위해 Docker Compose 실행을 권장합니다.
+팀원별 Node.js 버전 차이를 줄이기 위해 Docker Compose 실행을 권장합니다. `docker-compose.yml`은 `frontend` 서비스만 정의하며, Supabase Cloud의 Auth/Postgres에 연결됩니다.
 
 ```bash
 docker compose up --build
@@ -62,11 +67,9 @@ docker compose up --build
 
 ```txt
 frontend: http://localhost:3000
-backend:  http://localhost:8080
-db:       localhost:5432
 ```
 
-자세한 내용은 `docs/docker-development.md`를 확인합니다.
+Supabase Cloud 프로젝트의 URL/공개 키가 필요합니다. 자세한 내용은 `docs/docker-development.md`와 `docs/development-setup.md`를 확인합니다.
 
 ### 프론트엔드
 
@@ -82,27 +85,9 @@ npm run dev
 http://localhost:3000
 ```
 
-### 백엔드
+### 백엔드 (Phase 2, MVP 실행에 불필요)
 
-먼저 JDK 21을 설치해야 합니다.
-
-```bash
-cd backend
-./gradlew bootRun
-```
-
-Windows에서는 아래 명령어를 사용합니다.
-
-```bat
-cd backend
-gradlew.bat bootRun
-```
-
-기본 주소:
-
-```txt
-http://localhost:8080
-```
+`backend/`는 현재 MVP 실행 경로가 아닙니다. Docker Compose와 CI 모두 `backend/`를 실행하지 않습니다. Phase 2 검토용으로 로컬에서 직접 실행해야 한다면 `backend/README.md`와 `backend/PHASE_2_NOT_IN_MVP.md`를 확인합니다.
 
 ## 개발 규칙
 

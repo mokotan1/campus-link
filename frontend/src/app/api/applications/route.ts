@@ -1,5 +1,5 @@
 import {
-  createApplication,
+  createApplicationForSession,
   normalizeApplicationPayload,
 } from "@/features/applications/server/applications";
 import {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const values = normalizeApplicationPayload(body);
-    const application = await createApplication(values);
+    const application = await createApplicationForSession(values);
 
     if (!application) {
       return apiUnauthorized();

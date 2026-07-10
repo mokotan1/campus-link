@@ -69,12 +69,14 @@ jobs:
       - name: 프로덕션 빌드
         run: npm run build
 
+  # backend: Phase 2 only. `backend/` is not part of the runnable MVP (see
+  # backend/PHASE_2_NOT_IN_MVP.md) and is intentionally not built or tested by
+  # MVP CI. The job is kept here, disabled via `if: false`, so it is easy to
+  # re-enable once Phase 2 backend work resumes without rewriting the pipeline.
   backend:
-    name: Backend 검사
+    name: Backend 검사 (Phase 2, MVP CI에서 비활성화)
     needs: changes
-    if: |
-      needs.changes.outputs.backend == 'true' ||
-      needs.changes.outputs.workflow == 'true'
+    if: false
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -102,22 +104,20 @@ jobs:
     needs:
       - changes
       - frontend
-      - backend
     if: always()
     steps:
       - name: CI 결과 확인
         shell: bash
         run: |
           frontend_result="${{ needs.frontend.result }}"
-          backend_result="${{ needs.backend.result }}"
 
-          if [ "$frontend_result" = "failure" ] || [ "$backend_result" = "failure" ]; then
-            echo "Frontend 또는 Backend 검사가 실패했습니다."
+          if [ "$frontend_result" = "failure" ]; then
+            echo "Frontend 검사가 실패했습니다."
             exit 1
           fi
 
-          if [ "$frontend_result" = "cancelled" ] || [ "$backend_result" = "cancelled" ]; then
-            echo "Frontend 또는 Backend 검사가 취소되었습니다."
+          if [ "$frontend_result" = "cancelled" ]; then
+            echo "Frontend 검사가 취소되었습니다."
             exit 1
           fi
 

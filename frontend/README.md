@@ -21,10 +21,10 @@ npm run build
 npm run lint
 ```
 
-레포 루트에서 Docker로 실행할 수도 있습니다.
+레포 루트에서 Docker로 실행할 수도 있습니다. 레포 루트의 `docker-compose.yml`은 `frontend` 서비스만 정의합니다.
 
 ```bash
-docker compose up frontend
+docker compose up --build
 ```
 
 ## 로컬 주소
@@ -66,3 +66,13 @@ src/shared/constants      공용 프론트엔드 상수
 ```
 
 `.env.local`은 커밋하지 않습니다.
+
+MVP는 Supabase Cloud에 연결됩니다. 최소 아래 값이 필요합니다.
+
+```txt
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+SUPABASE_SERVICE_ROLE_KEY
+```
+
+`SUPABASE_SERVICE_ROLE_KEY`는 서버 전용 값입니다. `NEXT_PUBLIC_*` 접두사를 붙이거나 브라우저로 노출하지 않습니다.

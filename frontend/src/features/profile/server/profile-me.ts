@@ -1,8 +1,9 @@
 import "server-only";
 
 import { isSchoolEmail } from "@/features/auth/lib/school-email";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+
+import { profileRepository } from "./profile.repository";
 
 export type ProfileFormValues = {
   displayName: string;
@@ -49,16 +50,19 @@ export type ProfileRecord = {
   readiness: ProfileReadiness;
 };
 
-function resolveOnboardingStep(profile: {
-  campus: string;
-  department: string;
-  grade: string;
-  roleTags: string[];
-  availabilityStatus: string;
-  collaborationType: string;
-  weeklyHours: string;
-  onboardingCompleted: boolean;
-}, readiness: Pick<ProfileReadiness, "hasPortfolio" | "hasRoleInWork">) {
+function resolveOnboardingStep(
+  profile: {
+    campus: string;
+    department: string;
+    grade: string;
+    roleTags: string[];
+    availabilityStatus: string;
+    collaborationType: string;
+    weeklyHours: string;
+    onboardingCompleted: boolean;
+  },
+  readiness: Pick<ProfileReadiness, "hasPortfolio" | "hasRoleInWork">,
+) {
   if (!profile.campus || !profile.department || !profile.grade) return 0;
   if (!profile.roleTags.length) return 1;
   if (!readiness.hasPortfolio || !readiness.hasRoleInWork) return 2;
@@ -72,35 +76,19 @@ function resolveOnboardingStep(profile: {
   return profile.onboardingCompleted ? 4 : 3;
 }
 
-type ProfileRow = {
-  student_id: string | null;
-  department: string | null;
-  grade: string | null;
-  bio: string | null;
-  tech_stack: string | null;
-  collaboration_status: string | null;
-  display_name: string | null;
-  role_tags: string[] | null;
-  availability_status: string | null;
-  collaboration_type: string | null;
-  weekly_hours: string | null;
-  onboarding_completed: boolean | null;
-};
-
-type PortfolioReadinessRow = {
-  role_in_work: string | null;
-};
-
 function computeProfileReadiness(
   email: string,
   campus: string | null,
-  profile: ProfileRow,
-  portfolios: PortfolioReadinessRow[],
+  profile: {
+    department: string | null;
+    grade: string | null;
+    role_tags: string[] | null;
+    availability_status: string | null;
+  },
+  portfolios: Array<{ role_in_work: string | null }>,
 ): ProfileReadiness {
   const hasPortfolio = portfolios.length > 0;
-  const hasRoleInWork = portfolios.some((item) =>
-    Boolean(item.role_in_work?.trim()),
-  );
+  const hasRoleInWork = portfolios.some((item) => Boolean(item.role_in_work?.trim()));
 
   const readiness: ProfileReadiness = {
     hasSchoolEmail: isSchoolEmail(email),
@@ -123,10 +111,23 @@ function computeProfileReadiness(
   return readiness;
 }
 
-function mapProfileRow(
+function mapProfileRecord(
   email: string,
   campus: string | null,
-  profile: ProfileRow,
+  profile: {
+    student_id: string | null;
+    department: string | null;
+    grade: string | null;
+    bio: string | null;
+    tech_stack: string | null;
+    collaboration_status: string;
+    display_name: string | null;
+    role_tags: string[] | null;
+    availability_status: string | null;
+    collaboration_type: string | null;
+    weekly_hours: string | null;
+    onboarding_completed: boolean;
+  },
   readiness: ProfileReadiness,
 ): ProfileRecord {
   const mapped = {
@@ -154,8 +155,17 @@ function mapProfileRow(
   };
 }
 
-const profileSelect =
-  "student_id, department, grade, bio, tech_stack, collaboration_status, display_name, role_tags, availability_status, collaboration_type, weekly_hours, onboarding_completed";
+async function buildProfileRecord(email: string, userId: number) {
+  const context = await profileRepository.findContextByUserId(userId);
+  const readiness = computeProfileReadiness(
+    email,
+    context.campus,
+    context.profile,
+    context.portfolioReadiness,
+  );
+
+  return mapProfileRecord(email, context.campus, context.profile, readiness);
+}
 
 export async function getMyProfile() {
   const appUser = await getCurrentAppUser();
@@ -164,44 +174,7 @@ export async function getMyProfile() {
     return null;
   }
 
-  const admin = createAdminClient();
-  const [
-    { data: userRow, error: userError },
-    { data: profile, error: profileError },
-    { data: portfolios, error: portfoliosError },
-  ] = await Promise.all([
-    admin.from("users").select("campus").eq("id", appUser.id).single(),
-    admin
-      .from("profiles")
-      .select(profileSelect)
-      .eq("user_id", appUser.id)
-      .single(),
-    admin
-      .from("portfolio_items")
-      .select("role_in_work")
-      .eq("user_id", appUser.id),
-  ]);
-
-  if (userError) {
-    throw new Error(userError.message);
-  }
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  if (portfoliosError) {
-    throw new Error(portfoliosError.message);
-  }
-
-  const readiness = computeProfileReadiness(
-    appUser.email,
-    userRow.campus,
-    profile,
-    portfolios ?? [],
-  );
-
-  return mapProfileRow(appUser.email, userRow.campus, profile, readiness);
+  return buildProfileRecord(appUser.email, appUser.id);
 }
 
 export async function updateMyProfile(values: ProfileFormValues) {
@@ -211,66 +184,7 @@ export async function updateMyProfile(values: ProfileFormValues) {
     return null;
   }
 
-  const admin = createAdminClient();
+  await profileRepository.updateByUserId(appUser.id, values);
 
-  if (values.campus) {
-    const { error: campusError } = await admin
-      .from("users")
-      .update({ campus: values.campus })
-      .eq("id", appUser.id);
-
-    if (campusError) {
-      throw new Error(campusError.message);
-    }
-  }
-
-  const { data: profile, error } = await admin
-    .from("profiles")
-    .update({
-      student_id: values.studentId || null,
-      department: values.department || null,
-      grade: values.grade || null,
-      bio: values.bio || null,
-      tech_stack: values.techStack || null,
-      collaboration_status: values.collaborationStatus,
-      display_name: values.displayName || null,
-      role_tags: values.roleTags,
-      availability_status: values.availabilityStatus || null,
-      collaboration_type: values.collaborationType || null,
-      weekly_hours: values.weeklyHours || null,
-      onboarding_completed: values.onboardingCompleted,
-    })
-    .eq("user_id", appUser.id)
-    .select(profileSelect)
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const [{ data: userRow, error: userError }, { data: portfolios, error: portfoliosError }] =
-    await Promise.all([
-      admin.from("users").select("campus").eq("id", appUser.id).single(),
-      admin
-        .from("portfolio_items")
-        .select("role_in_work")
-        .eq("user_id", appUser.id),
-    ]);
-
-  if (userError) {
-    throw new Error(userError.message);
-  }
-
-  if (portfoliosError) {
-    throw new Error(portfoliosError.message);
-  }
-
-  const readiness = computeProfileReadiness(
-    appUser.email,
-    userRow.campus,
-    profile,
-    portfolios ?? [],
-  );
-
-  return mapProfileRow(appUser.email, userRow.campus, profile, readiness);
+  return buildProfileRecord(appUser.email, appUser.id);
 }
