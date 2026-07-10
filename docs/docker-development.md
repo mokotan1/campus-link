@@ -29,6 +29,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
 서비스 역할 키(`SUPABASE_SERVICE_ROLE_KEY`)는 브라우저에 노출되는 `NEXT_PUBLIC_*` 값으로 절대 전달하지 않습니다. `frontend/` 폴더가 컨테이너에 그대로 마운트되므로, 서버 전용 값은 `frontend/.env.local`에 두면 컨테이너 안의 Next.js가 그대로 읽습니다.
 
+Docker Compose는 레포 루트의 `.env` 파일도 자동으로 불러와 `${VAR}` 치환에 사용합니다. 루트에 `.env`를 두면 `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 매번 셸 환경변수로 export하지 않아도 됩니다.
+
 ## 첫 실행
 
 레포 루트에서 실행합니다.
