@@ -22,6 +22,7 @@ Campus Link는 학교 기반 협업 매칭 웹서비스이므로, 일반 웹 보
 MVP 공개 테이블(`users`, `profiles`, `portfolio_items`, `projects`, `applications`)은 모두 RLS가 활성화되어 있으며, 명시적 정책이 없으면 기본 거부(default-deny)입니다. `using (true)` 같은 전면 허용 정책은 사용하지 않습니다.
 
 - **신원 매핑:** `public.current_app_user_id()`가 `auth.uid()`를 bigint `public.users.id`로 변환합니다. `getCurrentAppUser()`가 `users`를 조회할 수 있도록, 인증 사용자는 `auth_user_id = auth.uid()`인 본인 행만 `SELECT`할 수 있습니다.
+- **users:** 인증 사용자는 `id = current_app_user_id()`인 본인 행만 `UPDATE`할 수 있습니다. 프로필 온보딩에서 `campus` 저장 시 세션 클라이언트가 이 정책을 통과합니다. 다른 사용자의 `users` 행은 수정할 수 없습니다.
 - **profiles:** 인증 사용자는 프로필을 읽을 수 있고, `INSERT`/`UPDATE`는 `user_id = current_app_user_id()`인 본인 행만 가능합니다.
 - **portfolio_items:** 인증 사용자는 포트폴리오를 읽을 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
 - **projects:** 인증 사용자는 `RECRUITING` 프로젝트와 본인 소유 프로젝트를 `SELECT`할 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.

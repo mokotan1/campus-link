@@ -329,6 +329,22 @@ BEGIN
     0,
     'owner cannot read another users row'
   );
+  UPDATE public.users
+  SET campus = 'Owner Campus'
+  WHERE id = owner_user_id;
+  PERFORM pg_temp.rls_assert_count(
+    format($sql$SELECT 1 FROM public.users WHERE id = %s AND campus = 'Owner Campus'$sql$, owner_user_id),
+    1,
+    'owner can update own campus'
+  );
+  PERFORM pg_temp.rls_set_auth(other_auth_id);
+  PERFORM pg_temp.rls_assert_update_blocked(
+    format(
+      $sql$UPDATE public.users SET campus = 'Hacked Campus' WHERE id = %s$sql$,
+      owner_user_id
+    ),
+    'other user cannot update owner campus'
+  );
 
   -- profiles
   PERFORM pg_temp.rls_assert_count(

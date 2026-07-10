@@ -169,6 +169,13 @@ create policy users_select_self
   to authenticated
   using (auth_user_id = auth.uid());
 
+create policy users_update_own
+  on public.users
+  for update
+  to authenticated
+  using (id = public.current_app_user_id())
+  with check (id = public.current_app_user_id());
+
 -- ---------------------------------------------------------------------------
 -- 4. profiles
 -- ---------------------------------------------------------------------------
