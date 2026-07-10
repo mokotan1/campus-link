@@ -2,7 +2,8 @@ import "server-only";
 
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 import { AppError } from "@/lib/api/error";
-import { createAdminClient } from "@/lib/supabase/admin";
+
+import { applicationRepository } from "./applications.repository";
 
 export type ApplicationFormValues = {
   projectId: number | null;
@@ -23,46 +24,6 @@ export type MyApplicationRecord = {
     recruitmentStatus: string;
   };
 };
-
-type ApplicationRow = {
-  id: number;
-  project_id: number;
-  applicant_user_id: number;
-  message: string | null;
-  application_status: string;
-  target_role: string | null;
-  created_at: string;
-};
-
-type ProjectSummaryRow = {
-  id: number;
-  owner_user_id: number;
-  title: string;
-  campus: string | null;
-  recruitment_status: string;
-  required_roles: string[] | null;
-};
-
-function mapApplicationRow(
-  row: ApplicationRow,
-  projectMap: Map<number, ProjectSummaryRow>
-) {
-  const project = projectMap.get(row.project_id);
-
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    message: row.message ?? "",
-    status: row.application_status,
-    targetRole: row.target_role ?? "",
-    createdAt: row.created_at,
-    project: {
-      title: project?.title ?? "",
-      campus: project?.campus ?? "",
-      recruitmentStatus: project?.recruitment_status ?? "",
-    },
-  } satisfies MyApplicationRecord;
-}
 
 export function normalizeApplicationPayload(body: unknown): ApplicationFormValues {
   const payload = (body ?? {}) as Record<string, unknown>;
@@ -85,21 +46,6 @@ export function validateApplicationPayload(values: ApplicationFormValues) {
   }
 }
 
-async function getProjectSummary(projectId: number) {
-  const admin = createAdminClient();
-  const { data: project, error } = await admin
-    .from("projects")
-    .select("id, owner_user_id, title, campus, recruitment_status, required_roles")
-    .eq("id", projectId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (project as ProjectSummaryRow | null) ?? null;
-}
-
 export async function createApplication(values: ApplicationFormValues) {
   validateApplicationPayload(values);
 
@@ -109,7 +55,7 @@ export async function createApplication(values: ApplicationFormValues) {
     return null;
   }
 
-  const project = await getProjectSummary(values.projectId!);
+  const project = await applicationRepository.findProjectSummary(values.projectId!);
 
   if (!project) {
     throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
@@ -133,39 +79,21 @@ export async function createApplication(values: ApplicationFormValues) {
     );
   }
 
-  const admin = createAdminClient();
-  const { data: existing, error: existingError } = await admin
-    .from("applications")
-    .select("id")
-    .eq("project_id", values.projectId!)
-    .eq("applicant_user_id", currentUser.id)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
+  const existing = await applicationRepository.findExisting(
+    values.projectId!,
+    currentUser.id,
+  );
 
   if (existing) {
     throw new AppError("DUPLICATE_RESOURCE", "이미 이 프로젝트에 지원했습니다.");
   }
 
-  const { data: application, error } = await admin
-    .from("applications")
-    .insert({
-      project_id: values.projectId!,
-      applicant_user_id: currentUser.id,
-      message: values.message || null,
-      application_status: "PENDING",
-      target_role: values.targetRole,
-    })
-    .select("id, project_id, applicant_user_id, message, application_status, target_role, created_at")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return mapApplicationRow(application as ApplicationRow, new Map([[project.id, project]]));
+  return applicationRepository.create(
+    values.projectId!,
+    currentUser.id,
+    values.message,
+    values.targetRole,
+  );
 }
 
 export async function listMyApplications() {
@@ -175,37 +103,5 @@ export async function listMyApplications() {
     return null;
   }
 
-  const admin = createAdminClient();
-  const { data: applications, error } = await admin
-    .from("applications")
-    .select("id, project_id, applicant_user_id, message, application_status, target_role, created_at")
-    .eq("applicant_user_id", currentUser.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const projectIds = [...new Set((applications ?? []).map((item) => item.project_id))];
-
-  if (projectIds.length === 0) {
-    return [];
-  }
-
-  const { data: projects, error: projectsError } = await admin
-    .from("projects")
-    .select("id, owner_user_id, title, campus, recruitment_status, required_roles")
-    .in("id", projectIds);
-
-  if (projectsError) {
-    throw new Error(projectsError.message);
-  }
-
-  const projectMap = new Map(
-    (projects ?? []).map((project) => [project.id, project as ProjectSummaryRow])
-  );
-
-  return (applications ?? []).map((application) =>
-    mapApplicationRow(application as ApplicationRow, projectMap)
-  );
+  return applicationRepository.listByApplicant(currentUser.id);
 }

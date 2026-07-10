@@ -2,7 +2,8 @@ import "server-only";
 
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 import { AppError } from "@/lib/api/error";
-import { createAdminClient } from "@/lib/supabase/admin";
+
+import { portfolioRepository } from "./portfolios.repository";
 
 export type PortfolioFormValues = {
   title: string;
@@ -25,18 +26,6 @@ export type PortfolioRecord = {
   coverImageName: string | null;
 };
 
-type PortfolioRow = {
-  id: number;
-  user_id: number;
-  title: string;
-  description: string | null;
-  external_url: string | null;
-  role_in_work: string | null;
-  tools: string[] | null;
-  created_at: string;
-  cover_image_name: string | null;
-};
-
 function toStringArray(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -45,20 +34,6 @@ function toStringArray(value: unknown) {
   return value
     .map((item) => String(item ?? "").trim())
     .filter(Boolean);
-}
-
-function mapPortfolioRow(row: PortfolioRow) {
-  return {
-    id: row.id,
-    userId: row.user_id,
-    title: row.title,
-    description: row.description ?? "",
-    externalUrl: row.external_url ?? "",
-    roleInWork: row.role_in_work ?? "",
-    tools: row.tools ?? [],
-    createdAt: row.created_at,
-    coverImageName: row.cover_image_name,
-  } satisfies PortfolioRecord;
 }
 
 export function normalizePortfolioPayload(body: unknown): PortfolioFormValues {
@@ -109,18 +84,7 @@ export async function listMyPortfolios() {
     return null;
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
-    .eq("user_id", currentUser.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []).map((item) => mapPortfolioRow(item as PortfolioRow));
+  return portfolioRepository.listByUserId(currentUser.id);
 }
 
 export async function createPortfolio(values: PortfolioFormValues) {
@@ -132,59 +96,7 @@ export async function createPortfolio(values: PortfolioFormValues) {
     return null;
   }
 
-  const admin = createAdminClient();
-  const { data: existing, error: existingError } = await admin
-    .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
-    .eq("user_id", currentUser.id)
-    .eq("external_url", values.externalUrl)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(existingError.message);
-  }
-
-  if (existing) {
-    const { data, error } = await admin
-      .from("portfolio_items")
-      .update({
-        title: values.title,
-        description: values.description || null,
-        role_in_work: values.roleInWork || null,
-        tools: values.tools,
-        cover_image_name: values.coverImageName || null,
-      })
-      .eq("id", existing.id)
-      .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
-      .single();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return mapPortfolioRow(data as PortfolioRow);
-  }
-
-  const { data, error } = await admin
-    .from("portfolio_items")
-    .insert({
-      user_id: currentUser.id,
-      title: values.title,
-      description: values.description || null,
-      item_type: "EXTERNAL_LINK",
-      external_url: values.externalUrl,
-      role_in_work: values.roleInWork || null,
-      tools: values.tools,
-      cover_image_name: values.coverImageName || null,
-    })
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return mapPortfolioRow(data as PortfolioRow);
+  return portfolioRepository.createOrUpdateByUrl(currentUser.id, values);
 }
 
 export async function listPortfoliosByProfileId(profileId: number) {
@@ -192,30 +104,11 @@ export async function listPortfoliosByProfileId(profileId: number) {
     throw new AppError("VALIDATION_ERROR", "올바른 프로필 ID가 필요합니다.");
   }
 
-  const admin = createAdminClient();
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("user_id")
-    .eq("id", profileId)
-    .maybeSingle();
+  const userId = await portfolioRepository.findUserIdByProfileId(profileId);
 
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  if (!profile) {
+  if (!userId) {
     return null;
   }
 
-  const { data, error } = await admin
-    .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
-    .eq("user_id", profile.user_id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data ?? []).map((item) => mapPortfolioRow(item as PortfolioRow));
+  return portfolioRepository.listByUserId(userId);
 }
