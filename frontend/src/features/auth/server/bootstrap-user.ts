@@ -10,6 +10,17 @@ export type BootstrapPayload = {
   emailVerified: boolean;
 };
 
+/**
+ * Escapes ILIKE metacharacters so a pattern matches the literal email value
+ * case-insensitively without treating `%` or `_` as wildcards.
+ */
+function escapeIlikeExact(value: string) {
+  return value
+    .replaceAll("\\", String.raw`\\`)
+    .replaceAll("%", String.raw`\%`)
+    .replaceAll("_", String.raw`\_`);
+}
+
 async function findAppUserIdByAuthUserId(supabase: AdminClient, authUserId: string) {
   const { data, error } = await supabase.from("users").select("id").eq("auth_user_id", authUserId).maybeSingle();
 
@@ -29,16 +40,24 @@ async function findAppUserIdByAuthUserId(supabase: AdminClient, authUserId: stri
  */
 async function linkExistingUserByEmail(supabase: AdminClient, payload: BootstrapPayload) {
   const { authUserId, email, emailVerified } = payload;
+  const normalizedEmail = email.toLowerCase();
 
-  const { data: unlinkedUser, error: unlinkedUserError } = await supabase
+  const { data: candidates, error: unlinkedUserError } = await supabase
     .from("users")
-    .select("id, auth_user_id")
-    .eq("email", email)
-    .maybeSingle();
+    .select("id, auth_user_id, email")
+    .ilike("email", escapeIlikeExact(email));
 
   if (unlinkedUserError) {
     throw new Error(unlinkedUserError.message);
   }
+
+  const matches = (candidates ?? []).filter((row) => row.email?.toLowerCase() === normalizedEmail);
+
+  if (matches.length > 1) {
+    throw new Error("UNAUTHORIZED: ambiguous email match for legacy account linking");
+  }
+
+  const unlinkedUser = matches[0];
 
   if (!unlinkedUser) {
     return null;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { toAppUser } from "./current-app-user.ts";
+import { toAppUser } from "./current-app-user.mapper.ts";
 
 test("toAppUser rejects an app user that is not linked to the auth subject", () => {
   assert.throws(() => toAppUser({ id: 1, auth_user_id: null, email: "student@school.ac.kr" }), /UNAUTHORIZED/);
