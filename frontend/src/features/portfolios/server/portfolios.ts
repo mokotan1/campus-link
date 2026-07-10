@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import { AppError } from "@/lib/api/error";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PortfolioFormValues = {
   title: string;
@@ -75,25 +76,29 @@ export function normalizePortfolioPayload(body: unknown): PortfolioFormValues {
 
 export function validatePortfolioPayload(values: PortfolioFormValues) {
   if (!values.title) {
-    throw new Error("포트폴리오 제목은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "포트폴리오 제목은 필수입니다.");
   }
 
   if (!values.externalUrl) {
-    throw new Error("포트폴리오 외부 링크는 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "포트폴리오 외부 링크는 필수입니다.");
   }
 
   if (!values.roleInWork) {
-    throw new Error("작업물 내 역할은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "작업물 내 역할은 필수입니다.");
   }
 
   try {
     const url = new URL(values.externalUrl);
 
     if (!["http:", "https:"].includes(url.protocol)) {
-      throw new Error("invalid");
+      throw new AppError("VALIDATION_ERROR", "올바른 외부 링크 주소가 필요합니다.");
     }
-  } catch {
-    throw new Error("올바른 외부 링크 주소가 필요합니다.");
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError("VALIDATION_ERROR", "올바른 외부 링크 주소가 필요합니다.");
   }
 }
 
@@ -184,7 +189,7 @@ export async function createPortfolio(values: PortfolioFormValues) {
 
 export async function listPortfoliosByProfileId(profileId: number) {
   if (!Number.isInteger(profileId) || profileId <= 0) {
-    throw new Error("올바른 프로필 ID가 필요합니다.");
+    throw new AppError("VALIDATION_ERROR", "올바른 프로필 ID가 필요합니다.");
   }
 
   const admin = createAdminClient();

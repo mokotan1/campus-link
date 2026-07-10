@@ -1,7 +1,8 @@
 import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
 import { isAuthSessionError } from "@/features/auth/server/auth-session-error";
 import { bootstrapUser } from "@/features/auth/server/bootstrap-user";
-import { apiError, apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
+import { AppError } from "@/lib/api/error";
+import { apiErrorFromUnknown, apiOk, apiUnauthorized } from "@/lib/api/response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
 export async function POST() {
@@ -25,7 +26,7 @@ export async function POST() {
     }
 
     if (!isSchoolEmail(user.email)) {
-      return apiError(schoolEmailMessage(), { status: 400 });
+      throw new AppError("VALIDATION_ERROR", schoolEmailMessage());
     }
 
     const result = await bootstrapUser({

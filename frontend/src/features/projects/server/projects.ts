@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import { AppError } from "@/lib/api/error";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ProjectFormValues = {
   title: string;
@@ -121,19 +122,19 @@ export function normalizeProjectPayload(body: unknown): ProjectFormValues {
 
 export function validateProjectPayload(values: ProjectFormValues) {
   if (!values.title) {
-    throw new Error("프로젝트 제목은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "프로젝트 제목은 필수입니다.");
   }
 
   if (!values.summary) {
-    throw new Error("프로젝트 한 줄 소개는 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "프로젝트 한 줄 소개는 필수입니다.");
   }
 
   if (!values.projectType) {
-    throw new Error("프로젝트 유형은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "프로젝트 유형은 필수입니다.");
   }
 
   if (!values.collaborationMode) {
-    throw new Error("협업 방식은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "협업 방식은 필수입니다.");
   }
 }
 
@@ -245,7 +246,7 @@ export async function listProjects(filters: ProjectListFilters) {
 
 export async function getProjectById(projectId: number) {
   if (!Number.isInteger(projectId) || projectId <= 0) {
-    throw new Error("올바른 프로젝트 ID가 필요합니다.");
+    throw new AppError("VALIDATION_ERROR", "올바른 프로젝트 ID가 필요합니다.");
   }
 
   const admin = createAdminClient();

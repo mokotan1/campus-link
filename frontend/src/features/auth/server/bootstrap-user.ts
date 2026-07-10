@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AppError } from "@/lib/api/error";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -54,7 +55,7 @@ async function linkExistingUserByEmail(supabase: AdminClient, payload: Bootstrap
   const matches = (candidates ?? []).filter((row) => row.email?.toLowerCase() === normalizedEmail);
 
   if (matches.length > 1) {
-    throw new Error("UNAUTHORIZED: ambiguous email match for legacy account linking");
+    throw new AppError("UNAUTHORIZED", "로그인이 필요합니다.");
   }
 
   const unlinkedUser = matches[0];
@@ -64,7 +65,7 @@ async function linkExistingUserByEmail(supabase: AdminClient, payload: Bootstrap
   }
 
   if (unlinkedUser.auth_user_id && unlinkedUser.auth_user_id !== authUserId) {
-    throw new Error("UNAUTHORIZED: email is already linked to a different Supabase Auth subject");
+    throw new AppError("UNAUTHORIZED", "로그인이 필요합니다.");
   }
 
   const { error: linkUserError } = await supabase

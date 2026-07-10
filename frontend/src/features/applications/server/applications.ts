@@ -1,7 +1,8 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import { AppError } from "@/lib/api/error";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type ApplicationFormValues = {
   projectId: number | null;
@@ -76,11 +77,11 @@ export function normalizeApplicationPayload(body: unknown): ApplicationFormValue
 
 export function validateApplicationPayload(values: ApplicationFormValues) {
   if (!values.projectId || values.projectId <= 0) {
-    throw new Error("올바른 프로젝트 ID가 필요합니다.");
+    throw new AppError("VALIDATION_ERROR", "올바른 프로젝트 ID가 필요합니다.");
   }
 
   if (!values.targetRole) {
-    throw new Error("지원 역할은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "지원 역할은 필수입니다.");
   }
 }
 
@@ -111,19 +112,25 @@ export async function createApplication(values: ApplicationFormValues) {
   const project = await getProjectSummary(values.projectId!);
 
   if (!project) {
-    throw new Error("프로젝트를 찾을 수 없습니다.");
+    throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
   }
 
   if (project.owner_user_id === currentUser.id) {
-    throw new Error("자신의 프로젝트에는 지원할 수 없습니다.");
+    throw new AppError("FORBIDDEN", "자신의 프로젝트에는 지원할 수 없습니다.");
   }
 
   if (project.recruitment_status !== "RECRUITING") {
-    throw new Error("현재 모집 중인 프로젝트만 지원할 수 있습니다.");
+    throw new AppError(
+      "INVALID_STATE_TRANSITION",
+      "현재 모집 중인 프로젝트만 지원할 수 있습니다.",
+    );
   }
 
   if (!(project.required_roles ?? []).includes(values.targetRole)) {
-    throw new Error("프로젝트에 없는 역할로는 지원할 수 없습니다.");
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "프로젝트에 없는 역할로는 지원할 수 없습니다.",
+    );
   }
 
   const admin = createAdminClient();
@@ -139,7 +146,7 @@ export async function createApplication(values: ApplicationFormValues) {
   }
 
   if (existing) {
-    throw new Error("이미 이 프로젝트에 지원했습니다.");
+    throw new AppError("DUPLICATE_RESOURCE", "이미 이 프로젝트에 지원했습니다.");
   }
 
   const { data: application, error } = await admin
