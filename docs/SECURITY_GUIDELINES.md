@@ -17,6 +17,28 @@ Campus Link는 학교 기반 협업 매칭 웹서비스이므로, 일반 웹 보
 - URL의 사용자 ID나 프로젝트 ID를 바꿔 다른 사용자의 정보에 접근할 수 없도록 합니다.
 - 관리자 기능은 별도 권한을 가진 계정만 접근 가능하도록 제한합니다.
 
+### 2.1 PostgreSQL RLS (MVP P0)
+
+MVP 공개 테이블(`users`, `profiles`, `portfolio_items`, `projects`, `applications`)은 모두 RLS가 활성화되어 있으며, 명시적 정책이 없으면 기본 거부(default-deny)입니다. `using (true)` 같은 전면 허용 정책은 사용하지 않습니다.
+
+- **신원 매핑:** `public.current_app_user_id()`가 `auth.uid()`를 bigint `public.users.id`로 변환합니다. `getCurrentAppUser()`가 `users`를 조회할 수 있도록, 인증 사용자는 `auth_user_id = auth.uid()`인 본인 행만 `SELECT`할 수 있습니다.
+- **profiles:** 인증 사용자는 프로필을 읽을 수 있고, `INSERT`/`UPDATE`는 `user_id = current_app_user_id()`인 본인 행만 가능합니다.
+- **portfolio_items:** 인증 사용자는 포트폴리오를 읽을 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
+- **projects:** 인증 사용자는 `RECRUITING` 프로젝트와 본인 소유 프로젝트를 `SELECT`할 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
+- **applications:** 지원자는 `PENDING` 상태로 본인 지원을 생성·조회할 수 있습니다. 프로젝트 소유자는 해당 프로젝트 지원을 조회할 수 있습니다. 상태 전환(`PENDING`→`ACCEPTED`/`REJECTED`, `PENDING`→`CANCELED`)은 `owner_decide_application()` 및 `applicant_withdraw_application()` 보안 함수로만 수행합니다. 테이블에 직접 `UPDATE` 정책은 두지 않습니다.
+- **상태 값 검증:** `applications.application_status`, `projects.recruitment_status`, `profiles.collaboration_status`에 `CHECK` 제약이 있습니다.
+
+RLS 검증 스크립트: `frontend/supabase/tests/rls-p0.sql`  
+마이그레이션 적용 후 실행:
+
+```bash
+cd frontend
+npx supabase db push
+psql "$SUPABASE_DB_URL" -f supabase/tests/rls-p0.sql
+```
+
+서버 코드는 세션 클라이언트로 RLS를 통과시키고, 서비스 롤 클라이언트는 부트스트랩·유지보수 등 명시적으로 문서화된 경우에만 사용합니다.
+
 ## 3. 개인정보 보호
 
 - 이름, 닉네임, 학교 이메일, 캠퍼스, 학과, 학년 등 개인정보는 서비스 운영에 필요한 범위만 수집합니다.
