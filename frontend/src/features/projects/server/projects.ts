@@ -307,27 +307,7 @@ export async function createProject(values: ProjectFormValues) {
     throw new Error(error.message);
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("department")
-    .eq("user_id", currentUser.id)
-    .maybeSingle();
+  const { ownerMap, departmentMap } = await loadOwnerMaps([currentUser.id]);
 
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  return mapProjectRow(
-    project as ProjectRow,
-    new Map([
-      [
-        currentUser.id,
-        {
-          email: currentUser.email,
-          name: currentUser.name,
-        },
-      ],
-    ]),
-    new Map([[currentUser.id, profile?.department ?? ""]])
-  );
+  return mapProjectRow(project as ProjectRow, ownerMap, departmentMap);
 }
