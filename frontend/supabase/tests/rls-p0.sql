@@ -30,6 +30,7 @@ DECLARE
   recruiting_project_id bigint;
   closed_project_id bigint;
   application_id bigint;
+  owner_portfolio_item_id bigint;
 BEGIN
   -- auth.users (service-role / postgres connection bypasses RLS)
   INSERT INTO auth.users (
@@ -142,6 +143,10 @@ BEGIN
   )
   RETURNING id INTO closed_project_id;
 
+  INSERT INTO public.portfolio_items (user_id, title, description)
+  VALUES (owner_user_id, 'Owner Portfolio Item', 'fixture portfolio')
+  RETURNING id INTO owner_portfolio_item_id;
+
   INSERT INTO public.applications (
     project_id,
     applicant_user_id,
@@ -169,6 +174,7 @@ BEGIN
   PERFORM set_config('rls.recruiting_project_id', recruiting_project_id::text, true);
   PERFORM set_config('rls.closed_project_id', closed_project_id::text, true);
   PERFORM set_config('rls.application_id', application_id::text, true);
+  PERFORM set_config('rls.owner_portfolio_item_id', owner_portfolio_item_id::text, true);
 END;
 $rls$;
 
@@ -248,6 +254,48 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION pg_temp.rls_assert_rpc_blocked(
+  p_sql text,
+  p_label text,
+  p_expected_fragment text DEFAULT NULL
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  BEGIN
+    EXECUTE p_sql;
+    RAISE EXCEPTION '[FAIL] %: RPC succeeded unexpectedly', p_label;
+  EXCEPTION
+    WHEN OTHERS THEN
+      IF p_expected_fragment IS NOT NULL
+        AND position(lower(p_expected_fragment) in lower(SQLERRM)) = 0 THEN
+        RAISE EXCEPTION '[FAIL] %: expected error containing "%", got: %',
+          p_label, p_expected_fragment, SQLERRM;
+      END IF;
+      RAISE NOTICE '[PASS] %', p_label;
+  END;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION pg_temp.rls_assert_delete_blocked(p_sql text, p_label text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  affected integer;
+BEGIN
+  EXECUTE p_sql;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+
+  IF affected > 0 THEN
+    RAISE EXCEPTION '[FAIL] %: delete affected % rows', p_label, affected;
+  END IF;
+
+  RAISE NOTICE '[PASS] %', p_label;
+END;
+$$;
+
 -- ---------------------------------------------------------------------------
 -- Assertions
 -- ---------------------------------------------------------------------------
@@ -265,6 +313,9 @@ DECLARE
   recruiting_project_id bigint := current_setting('rls.recruiting_project_id')::bigint;
   closed_project_id bigint := current_setting('rls.closed_project_id')::bigint;
   application_id bigint := current_setting('rls.application_id')::bigint;
+  owner_portfolio_item_id bigint := current_setting('rls.owner_portfolio_item_id')::bigint;
+  pending_application_id bigint;
+  owner_portfolio_insert_id bigint;
 BEGIN
   -- users: self SELECT keeps auth bootstrap working
   PERFORM pg_temp.rls_set_auth(owner_auth_id);
@@ -297,6 +348,52 @@ BEGIN
   UPDATE public.profiles
   SET bio = 'owner updated bio'
   WHERE id = owner_profile_id;
+
+  -- portfolio_items
+  PERFORM pg_temp.rls_set_auth(other_auth_id);
+  PERFORM pg_temp.rls_assert_count(
+    format('SELECT 1 FROM public.portfolio_items WHERE id = %s', owner_portfolio_item_id),
+    1,
+    'authenticated user can read another user portfolio item'
+  );
+  PERFORM pg_temp.rls_assert_update_blocked(
+    format(
+      'UPDATE public.portfolio_items SET title = ''hacked'' WHERE id = %s',
+      owner_portfolio_item_id
+    ),
+    'other user cannot update owner portfolio item'
+  );
+  PERFORM pg_temp.rls_assert_delete_blocked(
+    format(
+      'DELETE FROM public.portfolio_items WHERE id = %s',
+      owner_portfolio_item_id
+    ),
+    'other user cannot delete owner portfolio item'
+  );
+
+  PERFORM pg_temp.rls_set_auth(owner_auth_id);
+  INSERT INTO public.portfolio_items (user_id, title, description)
+  VALUES (owner_user_id, 'Owner New Portfolio Item', 'inserted under RLS')
+  RETURNING id INTO owner_portfolio_insert_id;
+
+  PERFORM pg_temp.rls_assert_count(
+    format('SELECT 1 FROM public.portfolio_items WHERE id = %s', owner_portfolio_insert_id),
+    1,
+    'owner can insert own portfolio item'
+  );
+
+  UPDATE public.portfolio_items
+  SET description = 'owner updated portfolio'
+  WHERE id = owner_portfolio_insert_id;
+
+  DELETE FROM public.portfolio_items
+  WHERE id = owner_portfolio_insert_id;
+
+  PERFORM pg_temp.rls_assert_count(
+    format('SELECT 1 FROM public.portfolio_items WHERE id = %s', owner_portfolio_insert_id),
+    0,
+    'owner can delete own portfolio item'
+  );
 
   -- projects
   PERFORM pg_temp.rls_set_auth(other_auth_id);
@@ -356,19 +453,56 @@ BEGIN
     'applicant can read own application'
   );
 
-  INSERT INTO public.applications (
-    project_id,
-    applicant_user_id,
-    application_status,
-    target_role
-  )
-  VALUES (
-    recruiting_project_id,
-    other_user_id,
-    'PENDING',
-    'Developer'
-  )
-  ON CONFLICT (project_id, applicant_user_id) DO NOTHING;
+  pending_application_id := application_id;
+
+  PERFORM pg_temp.rls_set_auth(owner_auth_id);
+  PERFORM pg_temp.rls_assert_insert_blocked(
+    format(
+      $sql$
+      INSERT INTO public.applications (
+        project_id, applicant_user_id, application_status, target_role
+      ) VALUES (%s, %s, 'PENDING', 'Developer')
+      $sql$,
+      recruiting_project_id,
+      owner_user_id
+    ),
+    'owner cannot apply to own recruiting project'
+  );
+
+  PERFORM pg_temp.rls_set_auth(other_auth_id);
+  PERFORM pg_temp.rls_assert_insert_blocked(
+    format(
+      $sql$
+      INSERT INTO public.applications (
+        project_id, applicant_user_id, application_status, target_role
+      ) VALUES (%s, %s, 'PENDING', 'Designer')
+      $sql$,
+      closed_project_id,
+      other_user_id
+    ),
+    'applicant cannot apply to closed project'
+  );
+
+  -- applications: RPC negative authorization
+  PERFORM pg_temp.rls_set_auth(third_auth_id);
+  PERFORM pg_temp.rls_assert_rpc_blocked(
+    format(
+      'SELECT public.owner_decide_application(%s, ''ACCEPTED'')',
+      pending_application_id
+    ),
+    'third party cannot call owner_decide_application',
+    'NOT_FOUND_OR_FORBIDDEN'
+  );
+
+  PERFORM pg_temp.rls_set_auth(other_auth_id);
+  PERFORM pg_temp.rls_assert_rpc_blocked(
+    format(
+      'SELECT public.owner_decide_application(%s, ''ACCEPTED'')',
+      pending_application_id
+    ),
+    'applicant cannot call owner_decide_application on own application',
+    'NOT_FOUND_OR_FORBIDDEN'
+  );
 
   -- applications: project owner read and transition
   PERFORM pg_temp.rls_set_auth(owner_auth_id);
@@ -393,6 +527,24 @@ BEGIN
     ),
     1,
     'project owner can transition application to ACCEPTED'
+  );
+
+  PERFORM pg_temp.rls_assert_rpc_blocked(
+    format(
+      'SELECT public.owner_decide_application(%s, ''REJECTED'')',
+      application_id
+    ),
+    'owner_decide_application on already-ACCEPTED fails with INVALID_TRANSITION',
+    'INVALID_TRANSITION'
+  );
+
+  PERFORM pg_temp.rls_assert_rpc_blocked(
+    format(
+      'SELECT public.applicant_withdraw_application(%s)',
+      application_id
+    ),
+    'owner cannot call applicant_withdraw_application on someone else application',
+    'NOT_FOUND_OR_FORBIDDEN'
   );
 
   PERFORM pg_temp.rls_set_auth(other_auth_id);

@@ -264,6 +264,13 @@ create policy applications_insert_own_pending
   with check (
     applicant_user_id = public.current_app_user_id()
     and application_status = 'PENDING'
+    and exists (
+      select 1
+      from public.projects as p
+      where p.id = project_id
+        and p.recruitment_status = 'RECRUITING'
+        and p.owner_user_id <> public.current_app_user_id()
+    )
   );
 
 create policy applications_select_applicant
