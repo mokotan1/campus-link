@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
-import { defaultOnboardingProfile, useAppData } from "@/shared/lib/app-data-context";
+import { defaultOnboardingProfile } from "@/features/onboarding/lib/onboarding-state";
 import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
 import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
@@ -54,7 +54,7 @@ function mapProfileRecordToOnboardingState(data: ProfileRecord, fallbackEmail: s
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { profile, setProfile } = useAppData();
+  const [profile, setProfile] = useState(defaultOnboardingProfile);
   const supabase = useMemo(() => createClient(), []);
   const [step, setStep] = useState(0);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -75,7 +75,7 @@ export default function OnboardingPage() {
     setPortfolioThumbnailUrl("");
     setPortfolioRoleInWork("");
     setProfile(defaultOnboardingProfile);
-  }, [setProfile]);
+  }, []);
 
   const prepareForSignedInUser = useCallback(
     (email: string) => {
@@ -87,7 +87,7 @@ export default function OnboardingPage() {
       setPortfolioRoleInWork("");
       setProfile({ ...defaultOnboardingProfile, email });
     },
-    [setProfile],
+    [],
   );
 
   useEffect(() => {
@@ -134,7 +134,7 @@ export default function OnboardingPage() {
       active = false;
       subscription.unsubscribe();
     };
-  }, [prepareForSignedInUser, resetLocalOnboardingState, setProfile, supabase]);
+  }, [prepareForSignedInUser, resetLocalOnboardingState, supabase]);
 
   useEffect(() => {
     if (!sessionEmail) {
@@ -202,7 +202,7 @@ export default function OnboardingPage() {
     return () => {
       active = false;
     };
-  }, [sessionEmail, setProfile]);
+  }, [sessionEmail]);
 
   function toggleRole(role: string) {
     setProfile({
@@ -240,6 +240,7 @@ export default function OnboardingPage() {
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+        coverImageName: "",
       });
 
       await updateMyProfileClient({

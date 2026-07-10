@@ -4,6 +4,7 @@ export type PortfolioFormValues = {
   externalUrl: string;
   roleInWork: string;
   tools: string[];
+  coverImageName: string;
 };
 
 export type PortfolioRecord = {
@@ -15,4 +16,5 @@ export type PortfolioRecord = {
   roleInWork: string;
   tools: string[];
   createdAt: string;
+  coverImageName: string | null;
 };

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AppDataProvider } from "@/shared/lib/app-data-context";
 import { SiteHeader } from "@/shared/components/site-header";
 
 export const metadata: Metadata = {
@@ -16,10 +15,8 @@ export default function RootLayout({
   return (
     <html lang="ko" className="h-full">
       <body className="min-h-full">
-        <AppDataProvider>
-          <SiteHeader />
-          {children}
-        </AppDataProvider>
+        <SiteHeader />
+        {children}
       </body>
     </html>
   );

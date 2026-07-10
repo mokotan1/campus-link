@@ -1,7 +1,20 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { CurrentAppUser } from "@/features/auth/server/current-app-user.mapper";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import { AppError } from "@/lib/api/error";
+
+import {
+  assertApplicantForWithdraw,
+  assertCanApplyToProject,
+  assertNoDuplicateApplication,
+  assertPendingApplicationStatus,
+  assertProjectOwnerForApplicationDecision,
+} from "./applications.guards";
+import {
+  applicationRepository,
+  type MatchedContactDetails,
+} from "./applications.repository";
 
 export type ApplicationFormValues = {
   projectId: number | null;
@@ -23,46 +36,6 @@ export type MyApplicationRecord = {
   };
 };
 
-type ApplicationRow = {
-  id: number;
-  project_id: number;
-  applicant_user_id: number;
-  message: string | null;
-  application_status: string;
-  target_role: string | null;
-  created_at: string;
-};
-
-type ProjectSummaryRow = {
-  id: number;
-  owner_user_id: number;
-  title: string;
-  campus: string | null;
-  recruitment_status: string;
-  required_roles: string[] | null;
-};
-
-function mapApplicationRow(
-  row: ApplicationRow,
-  projectMap: Map<number, ProjectSummaryRow>
-) {
-  const project = projectMap.get(row.project_id);
-
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    message: row.message ?? "",
-    status: row.application_status,
-    targetRole: row.target_role ?? "",
-    createdAt: row.created_at,
-    project: {
-      title: project?.title ?? "",
-      campus: project?.campus ?? "",
-      recruitmentStatus: project?.recruitment_status ?? "",
-    },
-  } satisfies MyApplicationRecord;
-}
-
 export function normalizeApplicationPayload(body: unknown): ApplicationFormValues {
   const payload = (body ?? {}) as Record<string, unknown>;
   const rawProjectId = Number(payload.projectId);
@@ -76,89 +49,119 @@ export function normalizeApplicationPayload(body: unknown): ApplicationFormValue
 
 export function validateApplicationPayload(values: ApplicationFormValues) {
   if (!values.projectId || values.projectId <= 0) {
-    throw new Error("올바른 프로젝트 ID가 필요합니다.");
+    throw new AppError("VALIDATION_ERROR", "올바른 프로젝트 ID가 필요합니다.");
   }
 
   if (!values.targetRole) {
-    throw new Error("지원 역할은 필수입니다.");
+    throw new AppError("VALIDATION_ERROR", "지원 역할은 필수입니다.");
   }
 }
 
-async function getProjectSummary(projectId: number) {
-  const admin = createAdminClient();
-  const { data: project, error } = await admin
-    .from("projects")
-    .select("id, owner_user_id, title, campus, recruitment_status, required_roles")
-    .eq("id", projectId)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (project as ProjectSummaryRow | null) ?? null;
-}
-
-export async function createApplication(values: ApplicationFormValues) {
+export async function createApplication(
+  currentUser: CurrentAppUser,
+  values: ApplicationFormValues,
+) {
   validateApplicationPayload(values);
 
-  const currentUser = await getCurrentAppUser();
-
-  if (!currentUser) {
-    return null;
-  }
-
-  const project = await getProjectSummary(values.projectId!);
+  const project = await applicationRepository.findProjectSummary(values.projectId!);
 
   if (!project) {
-    throw new Error("프로젝트를 찾을 수 없습니다.");
+    throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
   }
 
-  if (project.owner_user_id === currentUser.id) {
-    throw new Error("자신의 프로젝트에는 지원할 수 없습니다.");
-  }
-
-  if (project.recruitment_status !== "RECRUITING") {
-    throw new Error("현재 모집 중인 프로젝트만 지원할 수 있습니다.");
-  }
+  assertCanApplyToProject(currentUser, project);
 
   if (!(project.required_roles ?? []).includes(values.targetRole)) {
-    throw new Error("프로젝트에 없는 역할로는 지원할 수 없습니다.");
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "프로젝트에 없는 역할로는 지원할 수 없습니다.",
+    );
   }
 
-  const admin = createAdminClient();
-  const { data: existing, error: existingError } = await admin
-    .from("applications")
-    .select("id")
-    .eq("project_id", values.projectId!)
-    .eq("applicant_user_id", currentUser.id)
-    .maybeSingle();
+  const existing = await applicationRepository.findExisting(
+    values.projectId!,
+    currentUser.id,
+  );
 
-  if (existingError) {
-    throw new Error(existingError.message);
+  assertNoDuplicateApplication(existing);
+
+  return applicationRepository.create(
+    values.projectId!,
+    currentUser.id,
+    values.message,
+    values.targetRole,
+  );
+}
+
+export async function withdrawApplication(
+  currentUser: CurrentAppUser,
+  applicationId: number,
+) {
+  if (!Number.isInteger(applicationId) || applicationId <= 0) {
+    throw new AppError("VALIDATION_ERROR", "올바른 지원 ID가 필요합니다.");
   }
 
-  if (existing) {
-    throw new Error("이미 이 프로젝트에 지원했습니다.");
+  const application = await applicationRepository.findById(applicationId);
+
+  if (!application) {
+    throw new AppError("NOT_FOUND", "지원을 찾을 수 없습니다.");
   }
 
-  const { data: application, error } = await admin
-    .from("applications")
-    .insert({
-      project_id: values.projectId!,
-      applicant_user_id: currentUser.id,
-      message: values.message || null,
-      application_status: "PENDING",
-      target_role: values.targetRole,
-    })
-    .select("id, project_id, applicant_user_id, message, application_status, target_role, created_at")
-    .single();
+  assertApplicantForWithdraw(currentUser, application.applicant_user_id);
+  assertPendingApplicationStatus(application.application_status);
 
-  if (error) {
-    throw new Error(error.message);
+  return applicationRepository.applicantWithdraw(applicationId);
+}
+
+export async function decideApplication(
+  currentUser: CurrentAppUser,
+  applicationId: number,
+  decision: "ACCEPTED" | "REJECTED",
+) {
+  if (!Number.isInteger(applicationId) || applicationId <= 0) {
+    throw new AppError("VALIDATION_ERROR", "올바른 지원 ID가 필요합니다.");
   }
 
-  return mapApplicationRow(application as ApplicationRow, new Map([[project.id, project]]));
+  const application = await applicationRepository.findById(applicationId);
+
+  if (!application) {
+    throw new AppError("NOT_FOUND", "지원을 찾을 수 없습니다.");
+  }
+
+  const project = await applicationRepository.findProjectSummary(application.project_id);
+
+  if (!project) {
+    throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
+  }
+
+  assertProjectOwnerForApplicationDecision(currentUser, project.owner_user_id);
+  assertPendingApplicationStatus(application.application_status);
+
+  return applicationRepository.ownerDecide(applicationId, decision);
+}
+
+export async function getMatchedContactDetails(
+  currentUser: CurrentAppUser,
+  otherUserId: number,
+): Promise<MatchedContactDetails> {
+  if (!Number.isInteger(otherUserId) || otherUserId <= 0) {
+    throw new AppError("VALIDATION_ERROR", "올바른 사용자 ID가 필요합니다.");
+  }
+
+  if (otherUserId === currentUser.id) {
+    throw new AppError("VALIDATION_ERROR", "본인 연락처는 이 API로 조회할 수 없습니다.");
+  }
+
+  const contact = await applicationRepository.getMatchedContactDetails(otherUserId);
+
+  if (!contact) {
+    throw new AppError(
+      "FORBIDDEN",
+      "수락된 지원 또는 제안 후에만 연락처를 확인할 수 있습니다.",
+    );
+  }
+
+  return contact;
 }
 
 export async function listMyApplications() {
@@ -168,37 +171,39 @@ export async function listMyApplications() {
     return null;
   }
 
-  const admin = createAdminClient();
-  const { data: applications, error } = await admin
-    .from("applications")
-    .select("id, project_id, applicant_user_id, message, application_status, target_role, created_at")
-    .eq("applicant_user_id", currentUser.id)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const projectIds = [...new Set((applications ?? []).map((item) => item.project_id))];
-
-  if (projectIds.length === 0) {
-    return [];
-  }
-
-  const { data: projects, error: projectsError } = await admin
-    .from("projects")
-    .select("id, owner_user_id, title, campus, recruitment_status, required_roles")
-    .in("id", projectIds);
-
-  if (projectsError) {
-    throw new Error(projectsError.message);
-  }
-
-  const projectMap = new Map(
-    (projects ?? []).map((project) => [project.id, project as ProjectSummaryRow])
-  );
-
-  return (applications ?? []).map((application) =>
-    mapApplicationRow(application as ApplicationRow, projectMap)
-  );
+  return applicationRepository.listByApplicant(currentUser.id);
 }
+
+export async function createApplicationForSession(values: ApplicationFormValues) {
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return createApplication(currentUser, values);
+}
+
+export async function withdrawApplicationForSession(applicationId: number) {
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return withdrawApplication(currentUser, applicationId);
+}
+
+export async function decideApplicationForSession(
+  applicationId: number,
+  decision: "ACCEPTED" | "REJECTED",
+) {
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return decideApplication(currentUser, applicationId, decision);
+}
+
