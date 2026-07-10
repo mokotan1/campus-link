@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Tables } from "@/lib/supabase/database.types";
+import { throwAppErrorFromRpc } from "@/lib/supabase/rpc-error";
 import { createClient } from "@/lib/supabase/server";
 
 import type { MyApplicationRecord } from "./applications";
@@ -15,6 +16,8 @@ type ApplicationListRow = Pick<
   | "target_role"
   | "created_at"
 >;
+
+type ApplicationDetailRow = ApplicationListRow;
 
 type ProjectSummaryRow = Pick<
   Tables<"projects">,
@@ -50,9 +53,18 @@ function mapApplicationRow(
 
 export type ProjectSummary = ProjectSummaryRow;
 
+export type MatchedContactDetails = {
+  userId: number;
+  email: string;
+  name: string | null;
+  campus: string | null;
+  department: string;
+};
+
 export interface ApplicationRepository {
   findProjectSummary(projectId: number): Promise<ProjectSummary | null>;
   findExisting(projectId: number, applicantUserId: number): Promise<{ id: number } | null>;
+  findById(applicationId: number): Promise<ApplicationDetailRow | null>;
   create(
     projectId: number,
     applicantUserId: number,
@@ -60,6 +72,12 @@ export interface ApplicationRepository {
     targetRole: string,
   ): Promise<MyApplicationRecord>;
   listByApplicant(applicantUserId: number): Promise<MyApplicationRecord[]>;
+  ownerDecide(
+    applicationId: number,
+    decision: "ACCEPTED" | "REJECTED",
+  ): Promise<ApplicationDetailRow>;
+  applicantWithdraw(applicationId: number): Promise<ApplicationDetailRow>;
+  getMatchedContactDetails(otherUserId: number): Promise<MatchedContactDetails | null>;
 }
 
 export const applicationRepository: ApplicationRepository = {
@@ -85,6 +103,21 @@ export const applicationRepository: ApplicationRepository = {
       .select("id")
       .eq("project_id", projectId)
       .eq("applicant_user_id", applicantUserId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
+  },
+
+  async findById(applicationId) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("applications")
+      .select(APPLICATION_SELECT)
+      .eq("id", applicationId)
       .maybeSingle();
 
     if (error) {
@@ -154,4 +187,60 @@ export const applicationRepository: ApplicationRepository = {
       mapApplicationRow(application, projectMap),
     );
   },
+
+  async ownerDecide(applicationId, decision) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("owner_decide_application", {
+      p_application_id: applicationId,
+      p_decision: decision,
+    });
+
+    if (error) {
+      throwAppErrorFromRpc(error);
+    }
+
+    return data as ApplicationDetailRow;
+  },
+
+  async applicantWithdraw(applicationId) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("applicant_withdraw_application", {
+      p_application_id: applicationId,
+    });
+
+    if (error) {
+      throwAppErrorFromRpc(error);
+    }
+
+    return data as ApplicationDetailRow;
+  },
+
+  async getMatchedContactDetails(otherUserId) {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_matched_contact_details", {
+      p_other_user_id: otherUserId,
+    });
+
+    if (error) {
+      throwAppErrorFromRpc(error, {
+        NOT_FOUND_OR_FORBIDDEN:
+          "수락된 지원 또는 제안 후에만 연락처를 확인할 수 있습니다.",
+      });
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      userId: row.user_id,
+      email: row.email,
+      name: row.name,
+      campus: row.campus,
+      department: row.department ?? "",
+    };
+  },
 };
+

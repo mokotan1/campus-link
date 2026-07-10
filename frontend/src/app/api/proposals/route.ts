@@ -1,7 +1,7 @@
 import {
-  createApplicationForSession,
-  normalizeApplicationPayload,
-} from "@/features/applications/server/applications";
+  createProposalForSession,
+  normalizeProposalPayload,
+} from "@/features/proposals/server/proposals";
 import {
   apiCreated,
   apiErrorFromUnknown,
@@ -11,14 +11,14 @@ import {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const values = normalizeApplicationPayload(body);
-    const application = await createApplicationForSession(values);
+    const values = normalizeProposalPayload(body);
+    const proposal = await createProposalForSession(values);
 
-    if (!application) {
+    if (!proposal) {
       return apiUnauthorized();
     }
 
-    return apiCreated(application);
+    return apiCreated(proposal);
   } catch (error) {
     return apiErrorFromUnknown(error);
   }

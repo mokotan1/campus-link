@@ -59,6 +59,62 @@ export type Database = {
           },
         ]
       }
+      // Task 6: manually extended until cloud schema regeneration catches up.
+      proposals: {
+        Row: {
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          proposal_status: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          message?: string | null
+          project_id: number
+          proposal_status?: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          message?: string | null
+          project_id?: number
+          proposal_status?: string
+          receiver_user_id?: number
+          sender_user_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_receiver_user_id_fkey"
+            columns: ["receiver_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_sender_user_id_fkey"
+            columns: ["sender_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_items: {
         Row: {
           cover_image_name: string | null
@@ -277,7 +333,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      applicant_withdraw_application: {
+        Args: { p_application_id: number }
+        Returns: Database["public"]["Tables"]["applications"]["Row"]
+      }
+      get_matched_contact_details: {
+        Args: { p_other_user_id: number }
+        Returns: {
+          campus: string | null
+          department: string
+          email: string
+          name: string | null
+          user_id: number
+        }[]
+      }
+      owner_decide_application: {
+        Args: { p_application_id: number; p_decision: string }
+        Returns: Database["public"]["Tables"]["applications"]["Row"]
+      }
+      receiver_decide_proposal: {
+        Args: { p_decision: string; p_proposal_id: number }
+        Returns: Database["public"]["Tables"]["proposals"]["Row"]
+      }
+      sender_cancel_proposal: {
+        Args: { p_proposal_id: number }
+        Returns: Database["public"]["Tables"]["proposals"]["Row"]
+      }
     }
     Enums: {
       [_ in never]: never
