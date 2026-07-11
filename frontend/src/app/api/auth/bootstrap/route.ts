@@ -34,7 +34,6 @@ export async function POST() {
     const result = await bootstrapUser({
       authUserId: user.id,
       email: user.email,
-      emailVerified: Boolean(user.email_confirmed_at),
     });
 
     return apiOk(result);

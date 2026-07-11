@@ -23,7 +23,7 @@ async function readApiResponse<T>(response: Response): Promise<T> {
 }
 
 export async function listMyPortfoliosClient(): Promise<PortfolioRecord[]> {
-  const response = await fetch("/api/portfolios", {
+  const response = await fetch("/api/portfolios/me", {
     method: "GET",
     cache: "no-store",
   });

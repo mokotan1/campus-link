@@ -31,6 +31,18 @@ export async function getMyProfileClient(): Promise<ProfileRecord> {
   return readApiResponse<ProfileRecord>(response);
 }
 
+export async function createMyProfileClient(input: ProfileFormValues): Promise<ProfileRecord> {
+  const response = await fetch("/api/profiles", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  return readApiResponse<ProfileRecord>(response);
+}
+
 export async function updateMyProfileClient(input: ProfileFormValues): Promise<ProfileRecord> {
   const response = await fetch("/api/profiles/me", {
     method: "PUT",

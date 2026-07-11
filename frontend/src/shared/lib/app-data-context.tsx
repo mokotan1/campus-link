@@ -9,7 +9,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { initialTalents } from "@/shared/constants";
+import { getCurrentAppUserClient, type CurrentAppUser } from "@/features/auth/api/auth-api";
+import { createClient } from "@/lib/supabase/client";
 import type { Application, OnboardingProfile, Portfolio, Project, Talent } from "@/shared/types";
 
 export const defaultOnboardingProfile: OnboardingProfile = {
@@ -75,6 +76,13 @@ type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
 type ProjectApiRecord = {
   id: number;
+  owner: {
+    userId: number;
+    profileId: number | null;
+    email: string;
+    name: string | null;
+    department: string;
+  };
   title: string;
   summary: string;
   description: string;
@@ -108,7 +116,66 @@ type ApplicationApiRecord = {
   };
 };
 
+type ReceivedApplicationApiRecord = {
+  id: number;
+  projectId: number;
+  message: string;
+  status: string;
+  targetRole: string;
+  createdAt: string;
+  project: {
+    title: string;
+    campus: string;
+    recruitmentStatus: string;
+  };
+  applicant: {
+    userId: number;
+    name: string;
+    email: string;
+    campus: string;
+    department: string;
+  };
+};
+
+type ProposalApiRecord = {
+  id: number;
+  direction: "sent" | "received";
+  projectId: number;
+  message: string;
+  status: string;
+  createdAt: string;
+  project: {
+    title: string;
+    campus: string;
+  };
+  profile: {
+    id: number;
+    name: string;
+    campus: string;
+    role: string;
+  };
+};
+
+type TalentApiRecord = {
+  id: number;
+  name: string;
+  studentNumber: string;
+  campus: string;
+  major: string;
+  grade: string;
+  role: string;
+  interests: string[];
+  skills: string[];
+  introduction: string;
+  email: string;
+  tools: string[];
+  availability: string;
+  portfolio: string;
+};
+
 type AppDataContextValue = {
+  isInitializing: boolean;
+  isAuthenticated: boolean;
   profile: OnboardingProfile;
   setProfile: (profile: OnboardingProfile) => void;
   saveProfile: (profile: OnboardingProfile) => Promise<void>;
@@ -122,6 +189,8 @@ type AppDataContextValue = {
   portfolioSaveState: SaveState;
   applications: Application[];
   createApplication: (input: NewApplicationInput) => Promise<void>;
+  reviewApplication: (input: { applicationId: number; status: "ACCEPTED" | "REJECTED" }) => Promise<void>;
+  reviewProposal: (input: { proposalId: number; status: "ACCEPTED" | "REJECTED" }) => Promise<void>;
   applicationSaveState: SaveState;
   hasApplied: (input: { projectId?: string | number; talentId?: string | number; type: Application["type"] }) => boolean;
 };
@@ -168,10 +237,14 @@ function mapProjectRecord(record: ProjectApiRecord): Project {
 
   return {
     id: String(record.id),
+    ownerUserId: String(record.owner.userId),
     title: record.title,
     campus: record.campus || "캠퍼스 미정",
-    author: "Campus Link",
-    category: record.requiredRoles[0] ?? "모집 역할 협의",
+    author:
+      record.owner.name ||
+      record.owner.email.split("@")[0] ||
+      "작성자 미입력",
+    category: record.owner.department || record.requiredRoles[0] || "모집 역할 협의",
     recruitingRoles: record.requiredRoles,
     role: record.requiredRoles[0] ?? "모집 역할 협의",
     maxMembers: 0,
@@ -202,6 +275,32 @@ function mapPortfolioRecord(record: PortfolioApiRecord): Portfolio {
   };
 }
 
+function mapTalentRecord(record: TalentApiRecord): Talent {
+  const labels = [...record.skills, ...record.interests, ...record.tools].filter(Boolean);
+  const uniqueLabels = [...new Set(labels)];
+
+  return {
+    id: String(record.id),
+    profileId: String(record.id),
+    name: record.name,
+    studentNumber: record.studentNumber || "",
+    campus: record.campus || "캠퍼스 미정",
+    major: record.major || "학과 미입력",
+    grade: record.grade || "학년 미입력",
+    role: record.role || "역할 미입력",
+    interests: record.interests ?? [],
+    skills: record.skills ?? [],
+    introduction: record.introduction || "소개가 아직 등록되지 않았습니다.",
+    email: record.email || "",
+    tools: uniqueLabels.slice(0, 4).map((label, index) => ({
+      label,
+      tone: (["blue", "amber", "teal", "green"] as const)[index % 4],
+    })),
+    availability: record.availability || "협업 가능 상태 미입력",
+    portfolio: record.portfolio || "",
+  };
+}
+
 function mapApplicationRecord(record: ApplicationApiRecord): Application {
   return {
     id: record.id,
@@ -211,6 +310,44 @@ function mapApplicationRecord(record: ApplicationApiRecord): Application {
     status: mapApplicationStatus(record.status),
     meta: [record.targetRole, record.project.campus, record.message].filter(Boolean).join(" · "),
     projectId: String(record.projectId),
+  };
+}
+
+function mapReceivedApplicationRecord(record: ReceivedApplicationApiRecord): Application {
+  return {
+    id: record.id,
+    title: record.project.title,
+    type: "지원",
+    direction: "received",
+    status: mapApplicationStatus(record.status),
+    meta: [
+      `${record.applicant.name} · ${record.applicant.campus}`,
+      record.applicant.department,
+      record.targetRole,
+      record.message,
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    projectId: String(record.projectId),
+    talentId: String(record.applicant.userId),
+  };
+}
+
+function mapProposalRecord(record: ProposalApiRecord): Application {
+  const meta =
+    record.direction === "sent"
+      ? `${record.project.title} · ${record.profile.name} · ${record.profile.role || record.profile.campus}`
+      : `${record.profile.name}님이 ${record.project.title} 프로젝트로 제안했습니다.`;
+
+  return {
+    id: record.id,
+    title: record.direction === "sent" ? record.profile.name : record.project.title,
+    type: "제안",
+    direction: record.direction,
+    status: record.status,
+    meta,
+    projectId: record.projectId,
+    talentId: record.profile.id,
   };
 }
 
@@ -225,9 +362,12 @@ async function readApiResponse<T>(response: Response) {
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [currentAppUser, setCurrentAppUser] = useState<CurrentAppUser | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [profile, setProfile] = useState<OnboardingProfile>(defaultOnboardingProfile);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [talents] = useState<Talent[]>(initialTalents);
+  const [talents, setTalents] = useState<Talent[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [profileSaveState, setProfileSaveState] = useState<SaveState>(idleState);
@@ -248,6 +388,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
+    async function loadCurrentAppUser() {
+      try {
+        const appUser = await getCurrentAppUserClient();
+
+        if (active) {
+          setCurrentAppUser(appUser);
+        }
+      } catch {
+        if (active) {
+          setCurrentAppUser(null);
+        }
+      }
+    }
+
     async function loadInitialProjects() {
       try {
         const records = await readApiResponse<ProjectApiRecord[]>(
@@ -257,47 +411,108 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (active) {
           setProjects(records.map(mapProjectRecord));
         }
-      } catch (error) {
-        console.error(error);
+      } catch {
+        if (active) {
+          setProjects([]);
+        }
       }
     }
 
     async function loadInitialPortfolios() {
       try {
         const records = await readApiResponse<PortfolioApiRecord[]>(
-          await fetch("/api/portfolios", { cache: "no-store" })
+          await fetch("/api/portfolios/me", { cache: "no-store" })
         );
 
         if (active) {
           setPortfolios(records.map(mapPortfolioRecord));
         }
-      } catch (error) {
-        console.error(error);
+      } catch {
+        if (active) {
+          setPortfolios([]);
+        }
       }
     }
 
     async function loadInitialApplications() {
       try {
-        const records = await readApiResponse<ApplicationApiRecord[]>(
-          await fetch("/api/applications/me", { cache: "no-store" })
-        );
+        const [applicationRecords, receivedApplicationRecords, proposalRecords] = await Promise.all([
+          readApiResponse<ApplicationApiRecord[]>(
+            await fetch("/api/applications/me", { cache: "no-store" })
+          ),
+          readApiResponse<ReceivedApplicationApiRecord[]>(
+            await fetch("/api/applications/received", { cache: "no-store" })
+          ),
+          readApiResponse<ProposalApiRecord[]>(
+            await fetch("/api/proposals/me", { cache: "no-store" })
+          ),
+        ]);
 
         if (active) {
-          setApplications(records.map(mapApplicationRecord));
+          setApplications([
+            ...receivedApplicationRecords.map(mapReceivedApplicationRecord),
+            ...proposalRecords.map(mapProposalRecord),
+            ...applicationRecords.map(mapApplicationRecord),
+          ]);
         }
-      } catch (error) {
-        console.error(error);
+      } catch {
+        if (active) {
+          setApplications([]);
+        }
       }
     }
 
-    void loadInitialProjects();
-    void loadInitialPortfolios();
-    void loadInitialApplications();
+    async function loadInitialTalents() {
+      try {
+        const records = await readApiResponse<TalentApiRecord[]>(
+          await fetch("/api/recommendations/talents", { cache: "no-store" })
+        );
+
+        if (active) {
+          setTalents(records.map(mapTalentRecord));
+        }
+      } catch {
+        if (active) {
+          setTalents([]);
+        }
+      }
+    }
+
+    async function loadInitialData() {
+      if (active) {
+        setIsInitializing(true);
+      }
+
+      await Promise.allSettled([
+        loadCurrentAppUser(),
+        loadInitialProjects(),
+        loadInitialPortfolios(),
+        loadInitialApplications(),
+        loadInitialTalents(),
+      ]);
+
+      if (active) {
+        setIsInitializing(false);
+      }
+    }
+
+    void loadInitialData();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      if (!active) {
+        return;
+      }
+
+      void loadInitialData();
+    });
 
     return () => {
       active = false;
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   const createProject = useCallback(async (input: NewProjectInput) => {
     setProjectSaveState({ isSaving: true, error: null });
@@ -389,22 +604,51 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ? projects.find((item) => String(item.id) === String(input.projectId))
           : undefined;
 
-        if (input.type === "제안" || !input.projectId || !project) {
-          setApplications((current) => [
-            {
-              id: Date.now(),
-              title: input.title,
-              type: input.type,
-              direction: "sent",
-              status: "대기",
-              meta: input.meta,
-              projectId: input.projectId,
-              talentId: input.talentId,
-            },
-            ...current,
-          ]);
+        if (input.type === "제안") {
+          if (!currentAppUser) {
+            throw new Error("로그인이 필요합니다.");
+          }
+
+          const ownedProjects = projects.filter(
+            (item) => String(item.ownerUserId) === String(currentAppUser.id)
+          );
+          const recruitingOwnedProjects = ownedProjects.filter(
+            (item) => item.status === "모집중"
+          );
+          const proposalProject =
+            project ??
+            recruitingOwnedProjects[0] ??
+            ownedProjects[0];
+
+          if (!proposalProject) {
+            throw new Error("제안하려면 먼저 내 프로젝트를 등록해야 합니다.");
+          }
+
+          if (!input.talentId) {
+            throw new Error("제안 대상 정보를 찾을 수 없습니다.");
+          }
+
+          const record = await readApiResponse<ProposalApiRecord>(
+            await fetch("/api/proposals", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                projectId: Number(proposalProject.id),
+                receiverProfileId: Number(input.talentId),
+                message: `${proposalProject.title} 프로젝트로 함께하고 싶습니다.`,
+              }),
+            })
+          );
+
+          setApplications((current) => [mapProposalRecord(record), ...current]);
           setApplicationSaveState({ isSaving: false, error: null });
           return;
+        }
+
+        if (!input.projectId || !project) {
+          throw new Error("지원할 프로젝트 정보를 찾을 수 없습니다.");
         }
 
         const record = await readApiResponse<ApplicationApiRecord>(
@@ -429,11 +673,79 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [hasApplied, projects],
+    [currentAppUser, hasApplied, projects],
+  );
+
+  const reviewApplication = useCallback(
+    async (input: { applicationId: number; status: "ACCEPTED" | "REJECTED" }) => {
+      setApplicationSaveState({ isSaving: true, error: null });
+
+      try {
+        const record = await readApiResponse<ReceivedApplicationApiRecord>(
+          await fetch(`/api/applications/${input.applicationId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: input.status,
+            }),
+          })
+        );
+
+        const nextItem = mapReceivedApplicationRecord(record);
+
+        setApplications((current) =>
+          current.map((item) => (item.id === nextItem.id && item.type === "지원" ? nextItem : item))
+        );
+        setApplicationSaveState({ isSaving: false, error: null });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "지원 상태를 변경하지 못했습니다. 다시 시도해주세요.";
+        setApplicationSaveState({ isSaving: false, error: message });
+        throw error;
+      }
+    },
+    [],
+  );
+
+  const reviewProposal = useCallback(
+    async (input: { proposalId: number; status: "ACCEPTED" | "REJECTED" }) => {
+      setApplicationSaveState({ isSaving: true, error: null });
+
+      try {
+        const record = await readApiResponse<ProposalApiRecord>(
+          await fetch(`/api/proposals/${input.proposalId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: input.status,
+            }),
+          })
+        );
+
+        const nextItem = mapProposalRecord(record);
+
+        setApplications((current) =>
+          current.map((item) => (item.id === nextItem.id && item.type === "제안" ? nextItem : item))
+        );
+        setApplicationSaveState({ isSaving: false, error: null });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "제안 상태를 변경하지 못했습니다. 다시 시도해주세요.";
+        setApplicationSaveState({ isSaving: false, error: message });
+        throw error;
+      }
+    },
+    [],
   );
 
   const value = useMemo(
     () => ({
+      isInitializing,
+      isAuthenticated: currentAppUser !== null,
       profile,
       setProfile,
       saveProfile,
@@ -447,10 +759,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       portfolioSaveState,
       applications,
       createApplication,
+      reviewApplication,
+      reviewProposal,
       applicationSaveState,
       hasApplied,
     }),
     [
+      isInitializing,
+      currentAppUser,
       profile,
       saveProfile,
       profileSaveState,
@@ -463,6 +779,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       portfolioSaveState,
       applications,
       createApplication,
+      reviewApplication,
+      reviewProposal,
       applicationSaveState,
       hasApplied,
     ]

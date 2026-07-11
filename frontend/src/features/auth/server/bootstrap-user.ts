@@ -5,10 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export type BootstrapPayload = {
   authUserId: string;
   email: string;
-  emailVerified: boolean;
 };
 
-export async function bootstrapUser({ authUserId, email, emailVerified }: BootstrapPayload) {
+export async function bootstrapUser({ authUserId, email }: BootstrapPayload) {
   const supabase = createAdminClient();
   const fallbackName = email.split("@")[0] || "new-user";
 
@@ -34,7 +33,6 @@ export async function bootstrapUser({ authUserId, email, emailVerified }: Bootst
         name: fallbackName,
         role: "STUDENT",
         auth_provider: "SUPABASE",
-        email_verified: emailVerified,
       })
       .select("id")
       .single();
@@ -44,15 +42,6 @@ export async function bootstrapUser({ authUserId, email, emailVerified }: Bootst
     }
 
     appUserId = insertedUser.id;
-  } else {
-    const { error: updateUserError } = await supabase
-      .from("users")
-      .update({ email_verified: emailVerified })
-      .eq("id", appUserId);
-
-    if (updateUserError) {
-      throw new Error(updateUserError.message);
-    }
   }
 
   const { data: existingProfile, error: existingProfileError } = await supabase

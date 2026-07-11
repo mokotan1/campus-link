@@ -15,16 +15,27 @@ function inferErrorStatus(message: string) {
     message.includes("링크") ||
     message.includes("ID") ||
     message.includes("역할") ||
-    message.includes("모집")
+    message.includes("도메인") ||
+    message.includes("모집") ||
+    message.includes("올바른") ||
+    message.includes("입력")
   ) {
     return 400;
   }
 
-  if (message.includes("로그인이 필요")) {
+  if (
+    message.includes("로그인이 필요") ||
+    message.includes("Auth session missing") ||
+    message.includes("JWT") ||
+    message.includes("token")
+  ) {
     return 401;
   }
 
-  if (message.includes("권한")) {
+  if (
+    message.includes("권한") ||
+    message.includes("내가 등록한 프로젝트로만 제안할 수 있습니다.")
+  ) {
     return 403;
   }
 
@@ -35,7 +46,8 @@ function inferErrorStatus(message: string) {
   if (
     message.includes("이미") ||
     message.includes("중복") ||
-    message.includes("자신의 프로젝트")
+    message.includes("자신의 프로젝트") ||
+    message.includes("자기 자신에게는 제안할 수 없습니다.")
   ) {
     return 409;
   }

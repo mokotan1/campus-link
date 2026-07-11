@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAppData } from "@/shared/lib/app-data-context";
 
 const navItems = [
   { href: "/onboarding", label: "온보딩" },
@@ -11,6 +12,7 @@ const navItems = [
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { isInitializing, isAuthenticated } = useAppData();
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/92 backdrop-blur">
@@ -36,6 +38,23 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          {isInitializing ? (
+            <span className="whitespace-nowrap rounded-lg px-3 py-2 text-slate-400">확인 중...</span>
+          ) : isAuthenticated ? (
+            <Link
+              className="whitespace-nowrap rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 transition hover:bg-emerald-100"
+              href="/applications"
+            >
+              로그인됨
+            </Link>
+          ) : (
+            <Link
+              className="whitespace-nowrap rounded-lg border border-slate-300 px-3 py-2 text-slate-700 transition hover:bg-slate-100 hover:text-slate-950"
+              href="/auth"
+            >
+              로그인
+            </Link>
+          )}
         </nav>
       </div>
     </header>

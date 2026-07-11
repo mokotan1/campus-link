@@ -20,7 +20,17 @@ export default function ProjectsPage() {
 function ProjectsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, projects, talents, portfolios, createApplication, hasApplied, applicationSaveState } =
+  const {
+    isInitializing,
+    isAuthenticated,
+    profile,
+    projects,
+    talents,
+    portfolios,
+    createApplication,
+    hasApplied,
+    applicationSaveState,
+  } =
     useAppData();
 
   const initialTab: Tab = searchParams.get("tab") === "portfolio" ? "portfolio" : "projects";
@@ -32,6 +42,11 @@ function ProjectsPageContent() {
   const [roleFilter, setRoleFilter] = useState("모든 역할");
   const [statusFilter, setStatusFilter] = useState("전체 상태");
   const [justApplied, setJustApplied] = useState<string | null>(null);
+  const createHref = !isAuthenticated
+    ? "/auth"
+    : tab === "projects"
+      ? "/projects/new"
+      : "/projects/portfolio/new";
 
   const filteredProjects = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -112,9 +127,9 @@ function ProjectsPageContent() {
           </div>
           <Link
             className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-950 px-5 text-sm font-extrabold text-white transition hover:bg-slate-800"
-            href={tab === "projects" ? "/projects/new" : "/projects/portfolio/new"}
+            href={createHref}
           >
-            {tab === "projects" ? "프로젝트 등록" : "포트폴리오 작성"}
+            {!isAuthenticated ? "로그인 후 작성" : tab === "projects" ? "프로젝트 등록" : "포트폴리오 작성"}
           </Link>
         </div>
 
@@ -187,6 +202,11 @@ function ProjectsPageContent() {
                   <h2 className="text-xl font-black">팀원 모집</h2>
                   <span className="text-sm font-extrabold text-slate-500">{filteredProjects.length}개 프로젝트</span>
                 </div>
+                {isInitializing ? (
+                  <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">
+                    프로젝트 목록을 불러오고 있습니다.
+                  </div>
+                ) : (
                 <div className="grid gap-4">
                   {filteredProjects.map((project) => {
                     const applied = hasApplied({ projectId: project.id, type: "지원" });
@@ -238,14 +258,23 @@ function ProjectsPageContent() {
                                   </Link>
                                 </span>
                               )}
-                              <button
-                                className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
-                                type="button"
-                                disabled={applied || applicationSaveState.isSaving}
-                                onClick={() => handleApplyToProject(project)}
-                              >
-                                {applied ? "지원 완료" : "지원하기"}
-                              </button>
+                              {isAuthenticated ? (
+                                <button
+                                  className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                  type="button"
+                                  disabled={applied || applicationSaveState.isSaving}
+                                  onClick={() => handleApplyToProject(project)}
+                                >
+                                  {applied ? "지원 완료" : "지원하기"}
+                                </button>
+                              ) : (
+                                <Link
+                                  className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800"
+                                  href="/auth"
+                                >
+                                  로그인 후 지원
+                                </Link>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -258,6 +287,7 @@ function ProjectsPageContent() {
                     </p>
                   )}
                 </div>
+                )}
               </div>
 
               <aside className="grid content-start gap-5">
@@ -285,6 +315,11 @@ function ProjectsPageContent() {
                     <h2 className="text-xl font-black">추천 인재</h2>
                     <span className="text-sm font-extrabold text-slate-500">검증 프로필</span>
                   </div>
+                  {isInitializing ? (
+                    <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">
+                      추천 인재를 불러오고 있습니다.
+                    </div>
+                  ) : (
                   <div className="grid gap-4">
                     {talents.slice(0, 6).map((talent) => {
                       const proposed = hasApplied({ talentId: talent.id, type: "제안" });
@@ -313,31 +348,52 @@ function ProjectsPageContent() {
                           </div>
                           <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4">
                             <span className="text-sm font-bold text-slate-500">{talent.availability}</span>
-                            <button
-                              className="min-h-10 rounded-lg bg-slate-950 px-4 text-sm font-extrabold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                              type="button"
-                              disabled={proposed || applicationSaveState.isSaving}
-                              onClick={() => handleProposeToTalent(talent)}
-                            >
-                              {proposed ? "제안 완료" : "제안하기"}
-                            </button>
+                            {isAuthenticated ? (
+                              <button
+                                className="min-h-10 rounded-lg bg-slate-950 px-4 text-sm font-extrabold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                type="button"
+                                disabled={proposed || applicationSaveState.isSaving}
+                                onClick={() => handleProposeToTalent(talent)}
+                              >
+                                {proposed ? "제안 완료" : "제안하기"}
+                              </button>
+                            ) : (
+                              <Link
+                                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-extrabold text-white transition hover:bg-slate-800"
+                                href="/auth"
+                              >
+                                로그인 후 제안
+                              </Link>
+                            )}
                           </div>
                         </article>
                       );
                     })}
                   </div>
+                  )}
                 </section>
               </aside>
             </div>
           </div>
         ) : (
           <div className="mt-6 grid gap-4">
-            {portfolios.length === 0 && (
+            {!isInitializing && portfolios.length === 0 && (
               <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
                 <p className="text-sm font-bold text-slate-500">아직 작성한 포트폴리오가 없습니다.</p>
-                <Link href="/projects/portfolio/new" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
-                  첫 포트폴리오 작성하기
-                </Link>
+                {isAuthenticated ? (
+                  <Link href="/projects/portfolio/new" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
+                    첫 포트폴리오 작성하기
+                  </Link>
+                ) : (
+                  <Link href="/auth" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
+                    로그인 후 작성하기
+                  </Link>
+                )}
+              </div>
+            )}
+            {isInitializing && (
+              <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-500">
+                포트폴리오를 불러오고 있습니다.
               </div>
             )}
             {portfolios.map((item) => (

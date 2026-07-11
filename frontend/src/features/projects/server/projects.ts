@@ -44,6 +44,7 @@ export type ProjectRecord = {
   coverImageName: string | null;
   owner: {
     userId: number;
+    profileId: number | null;
     email: string;
     name: string | null;
     department: string;
@@ -140,7 +141,8 @@ export function validateProjectPayload(values: ProjectFormValues) {
 function mapProjectRow(
   row: ProjectRow,
   owners: Map<number, { email: string; name: string | null }>,
-  departments: Map<number, string>
+  departments: Map<number, string>,
+  profileIds: Map<number, number>,
 ) {
   const owner = owners.get(row.owner_user_id);
 
@@ -162,6 +164,7 @@ function mapProjectRow(
     coverImageName: row.cover_image_name,
     owner: {
       userId: row.owner_user_id,
+      profileId: profileIds.get(row.owner_user_id) ?? null,
       email: owner?.email ?? "",
       name: owner?.name ?? null,
       department: departments.get(row.owner_user_id) ?? "",
@@ -174,7 +177,7 @@ async function loadOwnerMaps(ownerIds: number[]) {
   const [{ data: owners, error: ownersError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       admin.from("users").select("id, email, name").in("id", ownerIds),
-      admin.from("profiles").select("user_id, department").in("user_id", ownerIds),
+      admin.from("profiles").select("id, user_id, department").in("user_id", ownerIds),
     ]);
 
   if (ownersError) {
@@ -191,8 +194,11 @@ async function loadOwnerMaps(ownerIds: number[]) {
   const departmentMap = new Map(
     (profiles ?? []).map((profile) => [profile.user_id, profile.department ?? ""])
   );
+  const profileIdMap = new Map(
+    (profiles ?? []).map((profile) => [profile.user_id, profile.id])
+  );
 
-  return { ownerMap, departmentMap };
+  return { ownerMap, departmentMap, profileIdMap };
 }
 
 export async function listProjects(filters: ProjectListFilters) {
@@ -236,10 +242,10 @@ export async function listProjects(filters: ProjectListFilters) {
     return [];
   }
 
-  const { ownerMap, departmentMap } = await loadOwnerMaps(ownerIds);
+  const { ownerMap, departmentMap, profileIdMap } = await loadOwnerMaps(ownerIds);
 
   return (projects ?? []).map((project) =>
-    mapProjectRow(project as ProjectRow, ownerMap, departmentMap)
+    mapProjectRow(project as ProjectRow, ownerMap, departmentMap, profileIdMap)
   );
 }
 
@@ -265,9 +271,9 @@ export async function getProjectById(projectId: number) {
     return null;
   }
 
-  const { ownerMap, departmentMap } = await loadOwnerMaps([project.owner_user_id]);
+  const { ownerMap, departmentMap, profileIdMap } = await loadOwnerMaps([project.owner_user_id]);
 
-  return mapProjectRow(project as ProjectRow, ownerMap, departmentMap);
+  return mapProjectRow(project as ProjectRow, ownerMap, departmentMap, profileIdMap);
 }
 
 export async function createProject(values: ProjectFormValues) {
@@ -309,7 +315,7 @@ export async function createProject(values: ProjectFormValues) {
 
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("department")
+    .select("id, department")
     .eq("user_id", currentUser.id)
     .maybeSingle();
 
@@ -328,6 +334,92 @@ export async function createProject(values: ProjectFormValues) {
         },
       ],
     ]),
-    new Map([[currentUser.id, profile?.department ?? ""]])
+    new Map([[currentUser.id, profile?.department ?? ""]]),
+    new Map(profile ? [[currentUser.id, profile.id]] : [])
+  );
+}
+
+export async function updateProject(projectId: number, values: ProjectFormValues) {
+  validateProjectPayload(values);
+
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    throw new Error("올바른 프로젝트 ID가 필요합니다.");
+  }
+
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const { data: existingProject, error: existingProjectError } = await admin
+    .from("projects")
+    .select("id, owner_user_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (existingProjectError) {
+    throw new Error(existingProjectError.message);
+  }
+
+  if (!existingProject) {
+    throw new Error("프로젝트를 찾을 수 없습니다.");
+  }
+
+  if (existingProject.owner_user_id !== currentUser.id) {
+    throw new Error("본인이 등록한 프로젝트만 수정할 권한이 있습니다.");
+  }
+
+  const { data: project, error } = await admin
+    .from("projects")
+    .update({
+      title: values.title,
+      summary: values.summary,
+      description: values.description || null,
+      project_type: values.projectType,
+      collaboration_mode: values.collaborationMode,
+      recruitment_status: values.recruitmentStatus,
+      campus: values.campus || null,
+      required_roles: values.requiredRoles,
+      tools: values.tools,
+      expected_member_count: values.expectedMemberCount,
+      start_date: values.startDate || null,
+      end_date: values.endDate || null,
+      cover_image_name: values.coverImageName || null,
+    })
+    .eq("id", projectId)
+    .select(
+      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name"
+    )
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("id, department")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  return mapProjectRow(
+    project as ProjectRow,
+    new Map([
+      [
+        currentUser.id,
+        {
+          email: currentUser.email,
+          name: currentUser.name,
+        },
+      ],
+    ]),
+    new Map([[currentUser.id, profile?.department ?? ""]]),
+    new Map(profile ? [[currentUser.id, profile.id]] : [])
   );
 }

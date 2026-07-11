@@ -13,10 +13,23 @@ function formatDeadline(deadline: string) {
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { projects, createApplication, hasApplied, applicationSaveState } = useAppData();
+  const { isInitializing, isAuthenticated, projects, createApplication, hasApplied, applicationSaveState } =
+    useAppData();
   const [justApplied, setJustApplied] = useState(false);
 
   const project = projects.find((item) => item.id === id);
+
+  if (isInitializing) {
+    return (
+      <main className="min-h-screen bg-[#f6f8fb] pb-16 text-slate-950">
+        <section className="mx-auto w-[min(760px,calc(100%-32px))] py-16 text-center">
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Loading</p>
+          <h1 className="mt-3 text-3xl font-black tracking-[0]">프로젝트 정보를 불러오고 있습니다</h1>
+          <p className="mt-3 leading-7 text-slate-600">잠시만 기다리면 상세 내용이 표시됩니다.</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!project) {
     return (
@@ -90,14 +103,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-4 border-t border-slate-200 pt-6">
-          <button
-            className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
-            type="button"
-            disabled={applied || applicationSaveState.isSaving}
-            onClick={handleApply}
-          >
-            {applied ? "지원 완료" : project.action}
-          </button>
+          {isAuthenticated ? (
+            <button
+              className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={applied || applicationSaveState.isSaving}
+              onClick={handleApply}
+            >
+              {applied ? "지원 완료" : project.action}
+            </button>
+          ) : (
+            <Link
+              href="/auth"
+              className="inline-flex min-h-11 items-center rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800"
+            >
+              로그인 후 지원
+            </Link>
+          )}
           {(applied || justApplied) && (
             <Link href="/applications" className="text-sm font-extrabold text-teal-700 underline underline-offset-2">
               지원 현황에서 확인하기

@@ -6,6 +6,7 @@ export type ProjectStatus = string;
 
 export type Project = {
   id: string | number;
+  ownerUserId?: string | number;
   title: string;
   campus: Campus;
   /** 작성자 (projects.csv: author) */
@@ -48,6 +49,7 @@ export type Talent = {
   tools: { label: string; tone?: TagTone }[];
   availability: string;
   portfolio: string;
+  profileId?: string | number;
 };
 
 export type ApplicationStatus = string;
@@ -56,7 +58,7 @@ export type Application = {
   id: number;
   title: string;
   type: "지원" | "제안";
-  /** sent: 내가 보낸 지원/제안, received: 내가 받은 제안 */
+  /** sent: 내가 보낸 지원/제안, received: 내가 받은 지원/제안 */
   direction: "sent" | "received";
   status: ApplicationStatus;
   meta: string;

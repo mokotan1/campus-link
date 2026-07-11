@@ -14,6 +14,16 @@ type BootstrapResult = {
   appUserId: number;
 };
 
+export type CurrentAppUser = {
+  id: number;
+  profileId: number | null;
+  authUserId: string;
+  email: string;
+  name: string | null;
+  emailVerified: boolean;
+  schoolEmail: boolean;
+};
+
 async function readApiResponse<T>(response: Response): Promise<T> {
   const payload = (await response.json()) as ApiResponse<T>;
 
@@ -30,4 +40,13 @@ export async function bootstrapAppUserClient(): Promise<void> {
   });
 
   await readApiResponse<BootstrapResult>(response);
+}
+
+export async function getCurrentAppUserClient(): Promise<CurrentAppUser> {
+  const response = await fetch("/api/auth/me", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  return readApiResponse<CurrentAppUser>(response);
 }

@@ -12,7 +12,7 @@ const statusOptions: Project["status"][] = ["모집중", "진행중", "완료"];
 
 export default function NewProjectPage() {
   const router = useRouter();
-  const { createProject, projectSaveState } = useAppData();
+  const { isAuthenticated, createProject, projectSaveState } = useAppData();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -67,6 +67,15 @@ export default function NewProjectPage() {
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
           블로그 글을 쓰듯 제목과 대표 이미지, 소개, 본문을 차례로 채워주세요. 캠퍼스와 역할 같은 정보는 오른쪽 옆 대신 아래에서 한 번에 정리합니다.
         </p>
+
+        {!isAuthenticated && (
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
+            프로젝트를 등록하려면 먼저 로그인해야 합니다.
+            <Link href="/auth" className="ml-2 underline underline-offset-2">
+              로그인하러 가기
+            </Link>
+          </div>
+        )}
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>
           <input
@@ -171,7 +180,7 @@ export default function NewProjectPage() {
               <button
                 className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
                 type="submit"
-                disabled={!isValid || projectSaveState.isSaving}
+                disabled={!isValid || projectSaveState.isSaving || !isAuthenticated}
               >
                 {projectSaveState.isSaving ? "등록 중…" : "등록하기"}
               </button>
