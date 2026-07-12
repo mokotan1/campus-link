@@ -8,8 +8,7 @@ import { useAppData } from "@/shared/lib/app-data-context";
 type Direction = "sent" | "received";
 
 export default function ApplicationsPage() {
-  const { isInitializing, isAuthenticated, applications, reviewApplication, reviewProposal, applicationSaveState } =
-    useAppData();
+  const { isInitializing, applications, reviewApplication, reviewProposal, applicationSaveState } = useAppData();
   const [direction, setDirection] = useState<Direction>("sent");
 
   const sent = useMemo(() => applications.filter((item) => item.direction === "sent"), [applications]);
@@ -73,15 +72,6 @@ export default function ApplicationsPage() {
           </button>
         </div>
 
-        {!isInitializing && !isAuthenticated && (
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
-            지원 현황을 보려면 먼저 로그인해야 합니다.
-            <Link href="/auth?next=/applications" className="ml-2 underline underline-offset-2">
-              로그인하러 가기
-            </Link>
-          </div>
-        )}
-
         <div className="mt-6 grid gap-3">
           {isInitializing && (
             <div className="rounded-lg border border-slate-200 bg-white p-8 text-center">
@@ -89,7 +79,7 @@ export default function ApplicationsPage() {
             </div>
           )}
 
-          {!isInitializing && isAuthenticated && visible.map((application) => (
+          {!isInitializing && visible.map((application) => (
             <article className="rounded-lg border border-slate-200 bg-white p-5" key={application.id}>
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -130,7 +120,7 @@ export default function ApplicationsPage() {
             </article>
           ))}
 
-          {!isInitializing && isAuthenticated && visible.length === 0 && (
+          {!isInitializing && visible.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm font-bold text-slate-500">
                 {direction === "sent" ? "아직 지원하거나 제안한 내역이 없습니다." : "아직 받은 지원이나 제안이 없습니다."}

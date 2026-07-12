@@ -9,7 +9,7 @@ import { roles as roleOptions } from "@/shared/constants";
 
 export default function NewPortfolioPage() {
   const router = useRouter();
-  const { isAuthenticated, createPortfolio, portfolioSaveState } = useAppData();
+  const { createPortfolio, portfolioSaveState } = useAppData();
 
   const [title, setTitle] = useState("");
   const [role, setRole] = useState(roleOptions[0]);
@@ -58,15 +58,6 @@ export default function NewPortfolioPage() {
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
           작업물을 블로그 글처럼 정리해보세요. 제목, 대표 이미지, 소개, 본문과 외부 링크를 함께 입력하면 됩니다.
         </p>
-
-        {!isAuthenticated && (
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
-            포트폴리오를 등록하려면 먼저 로그인해야 합니다.
-            <Link href="/auth?next=/projects/portfolio/new" className="ml-2 underline underline-offset-2">
-              로그인하러 가기
-            </Link>
-          </div>
-        )}
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>
           <input
@@ -150,7 +141,7 @@ export default function NewPortfolioPage() {
               <button
                 className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"
                 type="submit"
-                disabled={!isValid || portfolioSaveState.isSaving || !isAuthenticated}
+                disabled={!isValid || portfolioSaveState.isSaving}
               >
                 {portfolioSaveState.isSaving ? "게시 중…" : "게시하기"}
               </button>
