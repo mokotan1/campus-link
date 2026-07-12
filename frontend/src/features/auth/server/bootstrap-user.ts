@@ -1,19 +1,25 @@
 import "server-only";
 
+import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type BootstrapPayload = {
   authUserId: string;
   email: string;
+  emailVerified: boolean;
 };
 
-export async function bootstrapUser({ authUserId, email }: BootstrapPayload) {
+export async function bootstrapUser({ authUserId, email, emailVerified }: BootstrapPayload) {
+  if (!isSchoolEmail(email)) {
+    throw new Error(schoolEmailMessage());
+  }
+
   const supabase = createAdminClient();
   const fallbackName = email.split("@")[0] || "new-user";
 
   const { data: existingUser, error: existingUserError } = await supabase
     .from("users")
-    .select("id")
+    .select("id, email_verified")
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
@@ -33,6 +39,7 @@ export async function bootstrapUser({ authUserId, email }: BootstrapPayload) {
         name: fallbackName,
         role: "STUDENT",
         auth_provider: "SUPABASE",
+        email_verified: emailVerified,
       })
       .select("id")
       .single();
@@ -42,6 +49,15 @@ export async function bootstrapUser({ authUserId, email }: BootstrapPayload) {
     }
 
     appUserId = insertedUser.id;
+  } else if (existingUser && existingUser.email_verified !== emailVerified) {
+    const { error: updateUserError } = await supabase
+      .from("users")
+      .update({ email_verified: emailVerified })
+      .eq("id", appUserId);
+
+    if (updateUserError) {
+      throw new Error(updateUserError.message);
+    }
   }
 
   const { data: existingProfile, error: existingProfileError } = await supabase

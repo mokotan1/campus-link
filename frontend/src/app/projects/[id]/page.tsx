@@ -114,7 +114,7 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
             </button>
           ) : (
             <Link
-              href="/auth"
+              href={`/auth?next=/projects/${project.id}`}
               className="inline-flex min-h-11 items-center rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800"
             >
               로그인 후 지원

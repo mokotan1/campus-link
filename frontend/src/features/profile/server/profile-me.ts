@@ -261,6 +261,10 @@ export async function updateMyProfile(values: ProfileFormValues) {
     return null;
   }
 
+  if (!isSchoolEmail(appUser.email)) {
+    throw new Error("학교 이메일 도메인(kmu.ac.kr) 계정만 프로필을 저장할 수 있습니다.");
+  }
+
   validateProfileValues(values);
 
   const normalizedRoleTags = uniqueTrimmedStrings(values.roleTags);

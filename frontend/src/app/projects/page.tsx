@@ -270,7 +270,7 @@ function ProjectsPageContent() {
                               ) : (
                                 <Link
                                   className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800"
-                                  href="/auth"
+                                  href="/auth?next=/projects"
                                 >
                                   로그인 후 지원
                                 </Link>
@@ -360,7 +360,7 @@ function ProjectsPageContent() {
                             ) : (
                               <Link
                                 className="inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-950 px-4 text-sm font-extrabold text-white transition hover:bg-slate-800"
-                                href="/auth"
+                                href="/auth?next=/projects"
                               >
                                 로그인 후 제안
                               </Link>
@@ -385,7 +385,7 @@ function ProjectsPageContent() {
                     첫 포트폴리오 작성하기
                   </Link>
                 ) : (
-                  <Link href="/auth" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
+                  <Link href="/auth?next=/projects?tab=portfolio" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
                     로그인 후 작성하기
                   </Link>
                 )}

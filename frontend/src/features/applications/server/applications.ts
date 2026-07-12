@@ -77,6 +77,7 @@ type UserRow = {
 type ProfileRow = {
   user_id: number;
   department: string | null;
+  onboarding_completed: boolean | null;
 };
 
 function mapApplicationRow(
@@ -185,6 +186,32 @@ async function getProjectSummary(projectId: number) {
   return (project as ProjectSummaryRow | null) ?? null;
 }
 
+async function ensureApplicantReady(userId: number, email: string) {
+  const admin = createAdminClient();
+
+  if (!email.endsWith("@kmu.ac.kr")) {
+    throw new Error("학교 이메일 계정만 프로젝트에 지원할 수 있습니다.");
+  }
+
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .select("user_id, department, onboarding_completed")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!profile) {
+    throw new Error("프로필을 먼저 생성해야 합니다.");
+  }
+
+  if (!profile.onboarding_completed) {
+    throw new Error("온보딩을 완료한 뒤 프로젝트에 지원할 수 있습니다.");
+  }
+}
+
 export async function createApplication(values: ApplicationFormValues) {
   validateApplicationPayload(values);
 
@@ -193,6 +220,8 @@ export async function createApplication(values: ApplicationFormValues) {
   if (!currentUser) {
     return null;
   }
+
+  await ensureApplicantReady(currentUser.id, currentUser.email);
 
   const project = await getProjectSummary(values.projectId!);
 
@@ -333,7 +362,10 @@ export async function listReceivedApplications() {
   const [{ data: users, error: usersError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       admin.from("users").select("id, email, name, campus").in("id", applicantIds),
-      admin.from("profiles").select("user_id, department").in("user_id", applicantIds),
+      admin
+        .from("profiles")
+        .select("user_id, department, onboarding_completed")
+        .in("user_id", applicantIds),
     ]);
 
   if (usersError) {
@@ -414,7 +446,10 @@ export async function updateReceivedApplicationStatus(
   const [{ data: users, error: usersError }, { data: profiles, error: profilesError }] =
     await Promise.all([
       admin.from("users").select("id, email, name, campus").eq("id", application.applicant_user_id),
-      admin.from("profiles").select("user_id, department").eq("user_id", application.applicant_user_id),
+      admin
+        .from("profiles")
+        .select("user_id, department, onboarding_completed")
+        .eq("user_id", application.applicant_user_id),
     ]);
 
   if (usersError) {

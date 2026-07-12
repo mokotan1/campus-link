@@ -17,6 +17,8 @@ function inferErrorStatus(message: string) {
     message.includes("역할") ||
     message.includes("도메인") ||
     message.includes("모집") ||
+    message.includes("온보딩") ||
+    message.includes("프로필") ||
     message.includes("올바른") ||
     message.includes("입력")
   ) {
@@ -34,7 +36,9 @@ function inferErrorStatus(message: string) {
 
   if (
     message.includes("권한") ||
-    message.includes("내가 등록한 프로젝트로만 제안할 수 있습니다.")
+    message.includes("내가 등록한 프로젝트로만 제안할 수 있습니다.") ||
+    message.includes("내 프로젝트에 들어온 지원만 처리할 수 있습니다.") ||
+    message.includes("내가 받은 제안만 처리할 수 있습니다.")
   ) {
     return 403;
   }

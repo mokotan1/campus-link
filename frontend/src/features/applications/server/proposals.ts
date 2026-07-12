@@ -47,6 +47,7 @@ type ProjectRow = {
   owner_user_id: number;
   title: string;
   campus: string | null;
+  recruitment_status?: string | null;
 };
 
 type ProfileRow = {
@@ -54,6 +55,7 @@ type ProfileRow = {
   user_id: number;
   display_name: string | null;
   role_tags: string[] | null;
+  onboarding_completed?: boolean | null;
 };
 
 type UserRow = {
@@ -148,7 +150,7 @@ async function getProject(projectId: number) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("projects")
-    .select("id, owner_user_id, title, campus")
+    .select("id, owner_user_id, title, campus, recruitment_status")
     .eq("id", projectId)
     .maybeSingle();
 
@@ -163,7 +165,7 @@ async function getReceiverProfile(profileId: number) {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("id, user_id, display_name, role_tags")
+    .select("id, user_id, display_name, role_tags, onboarding_completed")
     .eq("id", profileId)
     .maybeSingle();
 
@@ -174,6 +176,32 @@ async function getReceiverProfile(profileId: number) {
   return (data as ProfileRow | null) ?? null;
 }
 
+async function ensureProposalSenderReady(userId: number, email: string) {
+  const admin = createAdminClient();
+
+  if (!email.endsWith("@kmu.ac.kr")) {
+    throw new Error("학교 이메일 계정만 협업 제안을 보낼 수 있습니다.");
+  }
+
+  const { data: profile, error } = await admin
+    .from("profiles")
+    .select("id, onboarding_completed")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!profile) {
+    throw new Error("프로필을 먼저 생성해야 합니다.");
+  }
+
+  if (!profile.onboarding_completed) {
+    throw new Error("온보딩을 완료한 뒤 협업 제안을 보낼 수 있습니다.");
+  }
+}
+
 export async function createProposal(values: ProposalFormValues) {
   validateProposalPayload(values);
 
@@ -182,6 +210,8 @@ export async function createProposal(values: ProposalFormValues) {
   if (!currentUser) {
     return null;
   }
+
+  await ensureProposalSenderReady(currentUser.id, currentUser.email);
 
   const [project, receiverProfile] = await Promise.all([
     getProject(values.projectId!),
@@ -196,8 +226,16 @@ export async function createProposal(values: ProposalFormValues) {
     throw new Error("제안 대상을 찾을 수 없습니다.");
   }
 
+  if (!receiverProfile.onboarding_completed) {
+    throw new Error("온보딩을 완료한 사용자에게만 제안할 수 있습니다.");
+  }
+
   if (project.owner_user_id !== currentUser.id) {
     throw new Error("내가 등록한 프로젝트로만 제안할 수 있습니다.");
+  }
+
+  if (project.recruitment_status !== "RECRUITING") {
+    throw new Error("현재 모집 중인 프로젝트로만 제안할 수 있습니다.");
   }
 
   if (receiverProfile.user_id === currentUser.id) {
@@ -205,6 +243,7 @@ export async function createProposal(values: ProposalFormValues) {
   }
 
   const admin = createAdminClient();
+
   const { data: existing, error: existingError } = await admin
     .from("proposals")
     .select("id")

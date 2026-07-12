@@ -51,6 +51,11 @@ export type ProjectRecord = {
   };
 };
 
+const allowedRecruitmentStatuses = new Set(["RECRUITING", "CLOSED"]);
+const allowedProjectTypes = new Set(["GENERAL"]);
+const allowedCollaborationModes = new Set(["MIXED"]);
+const allowedCampuses = new Set(["대명캠", "성서캠"]);
+
 function toStringArray(value: unknown) {
   if (!Array.isArray(value)) {
     return [];
@@ -135,6 +140,42 @@ export function validateProjectPayload(values: ProjectFormValues) {
 
   if (!values.collaborationMode) {
     throw new Error("협업 방식은 필수입니다.");
+  }
+
+  if (!allowedProjectTypes.has(values.projectType)) {
+    throw new Error("올바른 프로젝트 유형이 필요합니다.");
+  }
+
+  if (!allowedCollaborationModes.has(values.collaborationMode)) {
+    throw new Error("올바른 협업 방식이 필요합니다.");
+  }
+
+  if (!allowedRecruitmentStatuses.has(values.recruitmentStatus)) {
+    throw new Error("올바른 모집 상태가 필요합니다.");
+  }
+
+  if (!allowedCampuses.has(values.campus)) {
+    throw new Error("올바른 캠퍼스를 선택해야 합니다.");
+  }
+
+  if (values.requiredRoles.length === 0) {
+    throw new Error("최소 한 개 이상의 모집 역할이 필요합니다.");
+  }
+
+  if (values.expectedMemberCount !== null && values.expectedMemberCount <= 0) {
+    throw new Error("모집 인원은 1명 이상이어야 합니다.");
+  }
+
+  if (values.startDate && Number.isNaN(Date.parse(values.startDate))) {
+    throw new Error("올바른 시작일이 필요합니다.");
+  }
+
+  if (values.endDate && Number.isNaN(Date.parse(values.endDate))) {
+    throw new Error("올바른 마감일이 필요합니다.");
+  }
+
+  if (values.startDate && values.endDate && values.startDate > values.endDate) {
+    throw new Error("마감일은 시작일보다 빠를 수 없습니다.");
   }
 }
 
@@ -285,7 +326,29 @@ export async function createProject(values: ProjectFormValues) {
     return null;
   }
 
+  if (!currentUser.schoolEmail) {
+    throw new Error("학교 이메일 계정만 프로젝트를 등록할 수 있습니다.");
+  }
+
   const admin = createAdminClient();
+  const { data: currentProfile, error: currentProfileError } = await admin
+    .from("profiles")
+    .select("id, department, onboarding_completed")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (currentProfileError) {
+    throw new Error(currentProfileError.message);
+  }
+
+  if (!currentProfile) {
+    throw new Error("프로필을 먼저 생성해야 합니다.");
+  }
+
+  if (!currentProfile.onboarding_completed) {
+    throw new Error("온보딩을 완료한 뒤 프로젝트를 등록할 수 있습니다.");
+  }
+
   const { data: project, error } = await admin
     .from("projects")
     .insert({
@@ -313,16 +376,6 @@ export async function createProject(values: ProjectFormValues) {
     throw new Error(error.message);
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id, department")
-    .eq("user_id", currentUser.id)
-    .maybeSingle();
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
   return mapProjectRow(
     project as ProjectRow,
     new Map([
@@ -334,8 +387,8 @@ export async function createProject(values: ProjectFormValues) {
         },
       ],
     ]),
-    new Map([[currentUser.id, profile?.department ?? ""]]),
-    new Map(profile ? [[currentUser.id, profile.id]] : [])
+    new Map([[currentUser.id, currentProfile.department ?? ""]]),
+    new Map([[currentUser.id, currentProfile.id]])
   );
 }
 

@@ -18,7 +18,7 @@ export default function Home() {
           <div className="mt-7 flex flex-wrap gap-3">
             <Link
               className="inline-flex min-h-11 items-center rounded-lg border border-teal-300 bg-teal-50 px-5 text-sm font-extrabold text-teal-800 transition hover:border-teal-400 hover:bg-teal-100"
-              href="/auth"
+              href="/auth?next=/onboarding"
             >
               로그인/회원가입
             </Link>

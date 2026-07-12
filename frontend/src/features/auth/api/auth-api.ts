@@ -43,10 +43,25 @@ export async function bootstrapAppUserClient(): Promise<void> {
 }
 
 export async function getCurrentAppUserClient(): Promise<CurrentAppUser> {
-  const response = await fetch("/api/auth/me", {
-    method: "GET",
-    cache: "no-store",
-  });
+  const readCurrentUser = async () => {
+    const response = await fetch("/api/auth/me", {
+      method: "GET",
+      cache: "no-store",
+    });
 
-  return readApiResponse<CurrentAppUser>(response);
+    return readApiResponse<CurrentAppUser>(response);
+  };
+
+  try {
+    return await readCurrentUser();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "현재 사용자 정보를 확인하지 못했습니다.";
+
+    if (!message.includes("로그인이 필요") && !message.includes("Auth session missing")) {
+      throw error;
+    }
+
+    await bootstrapAppUserClient();
+    return readCurrentUser();
+  }
 }

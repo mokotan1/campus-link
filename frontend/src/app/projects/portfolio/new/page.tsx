@@ -62,7 +62,7 @@ export default function NewPortfolioPage() {
         {!isAuthenticated && (
           <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
             포트폴리오를 등록하려면 먼저 로그인해야 합니다.
-            <Link href="/auth" className="ml-2 underline underline-offset-2">
+            <Link href="/auth?next=/projects/portfolio/new" className="ml-2 underline underline-offset-2">
               로그인하러 가기
             </Link>
           </div>
