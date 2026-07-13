@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileDropField } from "@/shared/components/file-drop-field";
+import { FileDropField, IMAGE_FILE_ACCEPT } from "@/shared/components/file-drop-field";
 import { useAppData } from "@/shared/lib/app-data-context";
 import { roles as roleOptions } from "@/shared/constants";
 import type { Campus, Project } from "@/shared/types";
@@ -65,22 +65,29 @@ export default function NewProjectPage() {
         </p>
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>
-          <input
-            className="w-full border-none bg-transparent text-3xl font-black tracking-[0] text-slate-950 outline-none placeholder:text-slate-300 sm:text-4xl"
-            placeholder="프로젝트 제목을 입력하세요"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
+          <label className="grid gap-2 text-sm font-extrabold text-slate-700">
+            <span>
+              프로젝트 제목 <span className="text-rose-600">*</span>
+            </span>
+            <input
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-2xl font-black tracking-[0] text-slate-950 outline-none placeholder:text-slate-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-100 sm:text-3xl"
+              placeholder="프로젝트 제목을 입력하세요"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
 
           <FileDropField
             label="대표 이미지 (선택)"
             helperText="프로젝트를 대표하는 이미지나 콘셉트 아트를 올려주세요. 올리지 않아도 등록할 수 있어요."
-            accept="image/*"
+            accept={IMAGE_FILE_ACCEPT}
             onFileSelect={(file) => setCoverFileName(file?.name)}
           />
 
           <label className="grid gap-2 text-sm font-extrabold text-slate-700">
-            한 줄 소개
+            <span>
+              한 줄 소개 <span className="text-rose-600">*</span>
+            </span>
             <input
               className="rounded-lg border border-slate-300 bg-white px-3 py-3 font-medium outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
               placeholder="목록에서 바로 보이는 짧은 요약을 적어주세요"
@@ -90,7 +97,9 @@ export default function NewProjectPage() {
           </label>
 
           <label className="grid gap-2 text-sm font-extrabold text-slate-700">
-            본문
+            <span>
+              본문 <span className="text-rose-600">*</span>
+            </span>
             <textarea
               className="min-h-64 rounded-lg border border-slate-300 bg-white px-3 py-3 font-medium leading-7 outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
               placeholder={"어떤 프로젝트인지, 어디까지 진행됐는지, 어떤 팀원이 필요한지 자유롭게 작성해보세요.\n\n예)\n- 지금까지 진행한 내용\n- 함께할 팀원에게 기대하는 점\n- 협업 방식과 일정"}

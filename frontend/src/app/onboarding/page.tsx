@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Tag } from "@/shared/components/tag";
-import { FileDropField } from "@/shared/components/file-drop-field";
+import { FileDropField, IMAGE_AND_VIDEO_FILE_ACCEPT } from "@/shared/components/file-drop-field";
 import { availabilityOptions, collaborationTypes, roles } from "@/shared/constants";
 import { useAppData } from "@/shared/lib/app-data-context";
 import type { Campus } from "@/shared/types";
@@ -186,7 +186,7 @@ export default function OnboardingPage() {
                 <FileDropField
                   label="대표 작업물"
                   helperText="대표 이미지, 영상 썸네일, 시연 GIF를 올리는 영역"
-                  accept="image/*,video/*"
+                  accept={IMAGE_AND_VIDEO_FILE_ACCEPT}
                 />
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-extrabold text-slate-700">

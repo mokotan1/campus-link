@@ -20,7 +20,7 @@ export default function ProjectsPage() {
 function ProjectsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { profile, projects, talents, portfolios, createApplication, hasApplied, applicationSaveState } =
+  const { profile, projects, talents, portfolios, createApplication, hasApplied, applicationSaveState, isMyProject } =
     useAppData();
 
   const initialTab: Tab = searchParams.get("tab") === "portfolio" ? "portfolio" : "projects";
@@ -64,23 +64,27 @@ function ProjectsPageContent() {
   }, [campusFilter, projects, query, roleFilter, statusFilter]);
 
   async function handleApplyToProject(project: (typeof projects)[number]) {
-    await createApplication({
+    const createdApplication = await createApplication({
       title: project.title,
       type: "지원",
       meta: `${project.role} 역할 · ${project.campus}`,
       projectId: project.id,
     });
+    if (!createdApplication) return;
+
     setJustApplied(project.title);
     window.setTimeout(() => setJustApplied((current) => (current === project.title ? null : current)), 2500);
   }
 
   async function handleProposeToTalent(talent: (typeof talents)[number]) {
-    await createApplication({
+    const createdApplication = await createApplication({
       title: talent.name,
       type: "제안",
       meta: `${talent.role} · ${talent.availability}`,
       talentId: talent.id,
     });
+    if (!createdApplication) return;
+
     setJustApplied(talent.name);
     window.setTimeout(() => setJustApplied((current) => (current === talent.name ? null : current)), 2500);
   }
@@ -182,6 +186,7 @@ function ProjectsPageContent() {
                 <div className="grid gap-4">
                   {filteredProjects.map((project) => {
                     const applied = hasApplied({ projectId: project.id, type: "지원" });
+                    const isOwnProject = isMyProject(project.id);
 
                     return (
                       <article
@@ -233,10 +238,10 @@ function ProjectsPageContent() {
                               <button
                                 className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-950 transition hover:border-teal-700 hover:text-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
                                 type="button"
-                                disabled={applied || applicationSaveState.isSaving}
+                                disabled={isOwnProject || applied || applicationSaveState.isSaving}
                                 onClick={() => handleApplyToProject(project)}
                               >
-                                {applied ? "지원 완료" : "지원하기"}
+                                {isOwnProject ? "내 프로젝트" : applied ? "지원 완료" : "지원하기"}
                               </button>
                             </div>
                           </div>

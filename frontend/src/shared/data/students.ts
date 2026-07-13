@@ -1,8 +1,6 @@
 // 이 파일은 students.csv 데이터를 기반으로 생성되었습니다.
-// 하드코딩된 더미 인재 데이터를 대체하기 위한 실제 학생 데이터입니다.
-import type { Talent } from "@/shared/types";
-
-export const studentTalents: Talent[] = [
+// 현재 화면은 students-csv.ts를 변환해 사용하며, 이 파일은 원본 생성 데이터를 보존합니다.
+export const studentTalents = [
   {
     id: 1,
     name: "안예준",

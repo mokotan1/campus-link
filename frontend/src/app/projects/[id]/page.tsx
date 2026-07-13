@@ -13,7 +13,7 @@ function formatDeadline(deadline: string) {
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { projects, createApplication, hasApplied, applicationSaveState } = useAppData();
+  const { projects, createApplication, hasApplied, applicationSaveState, isMyProject } = useAppData();
   const [justApplied, setJustApplied] = useState(false);
 
   const project = projects.find((item) => item.id === id);
@@ -39,15 +39,17 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   }
 
   const applied = hasApplied({ projectId: project.id, type: "지원" });
+  const isOwnProject = isMyProject(project.id);
 
   async function handleApply() {
-    await createApplication({
+    const createdApplication = await createApplication({
       title: project!.title,
       type: "지원",
       meta: `${project!.role} 역할 · ${project!.campus}`,
       projectId: project!.id,
     });
-    setJustApplied(true);
+
+    setJustApplied(Boolean(createdApplication));
   }
 
   return (
@@ -89,12 +91,12 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
           <button
             className="min-h-11 rounded-lg bg-teal-700 px-6 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
             type="button"
-            disabled={applied || applicationSaveState.isSaving}
+            disabled={isOwnProject || applied || applicationSaveState.isSaving}
             onClick={handleApply}
           >
-            {applied ? "지원 완료" : project.action}
+            {isOwnProject ? "내 프로젝트" : applied ? "지원 완료" : project.action}
           </button>
-          {(applied || justApplied) && (
+          {!isOwnProject && (applied || justApplied) && (
             <Link href="/applications" className="text-sm font-extrabold text-teal-700 underline underline-offset-2">
               지원 현황에서 확인하기
             </Link>

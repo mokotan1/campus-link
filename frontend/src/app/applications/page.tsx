@@ -8,7 +8,7 @@ import { useAppData } from "@/shared/lib/app-data-context";
 type Direction = "sent" | "received";
 
 export default function ApplicationsPage() {
-  const { applications } = useAppData();
+  const { applications, applicationSaveState, cancelApplication } = useAppData();
   const [direction, setDirection] = useState<Direction>("sent");
 
   const sent = useMemo(() => applications.filter((item) => item.direction === "sent"), [applications]);
@@ -73,8 +73,22 @@ export default function ApplicationsPage() {
                   프로젝트 보기
                 </Link>
               )}
+              {application.direction === "sent" && application.status === "대기" && (
+                <button
+                  className="mt-4 inline-flex min-h-9 items-center rounded-lg border border-rose-200 bg-white px-3 text-xs font-extrabold text-rose-700 transition hover:border-rose-400 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  disabled={applicationSaveState.isSaving}
+                  onClick={() => void cancelApplication(application.id)}
+                >
+                  {applicationSaveState.isSaving ? "처리 중…" : "취소하기"}
+                </button>
+              )}
             </article>
           ))}
+
+          {applicationSaveState.error && (
+            <p className="rounded-lg bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">{applicationSaveState.error}</p>
+          )}
 
           {visible.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
