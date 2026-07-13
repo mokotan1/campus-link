@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { isSchoolEmail, schoolEmailMessage } from "@/features/auth/lib/school-email";
@@ -71,6 +71,7 @@ function messageClassName(tone: AuthMessageTone) {
 
 export function AuthPanel() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const [mode, setMode] = useState<Mode>("sign-up");
   const [email, setEmail] = useState("");
@@ -81,6 +82,7 @@ export function AuthPanel() {
   const [profilePending, setProfilePending] = useState(false);
   const [profileMessage, setProfileMessage] = useState<AuthMessage>(initialProfileMessage);
   const [profile, setProfile] = useState<ProfileFormState>(emptyProfileState);
+  const redirectTo = searchParams.get("next") || "/onboarding";
 
   async function loadProfile() {
     const data = await getMyProfileClient();
@@ -205,6 +207,7 @@ export function AuthPanel() {
             tone: "success",
             text: "회원가입과 기본 프로필 생성이 완료되었습니다.",
           });
+          router.push(redirectTo);
         } else {
           setMessage({
             tone: "success",
@@ -230,6 +233,7 @@ export function AuthPanel() {
         tone: "success",
         text: "로그인 성공. 온보딩과 프로젝트 화면으로 이동할 수 있습니다.",
       });
+      router.push(redirectTo);
     } catch (error) {
       setMessage({
         tone: "error",
@@ -395,9 +399,9 @@ export function AuthPanel() {
             <button
               className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
               type="button"
-              onClick={() => router.push("/onboarding")}
+              onClick={() => router.push(redirectTo)}
             >
-              온보딩으로 이동
+              원래 화면으로 이동
             </button>
           </div>
         </form>
