@@ -1,24 +1,25 @@
 import "server-only";
 
-import { isSchoolEmail } from "@/features/auth/lib/school-email";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
-export type AppUserRecord = {
-  id: number;
-  profileId: number | null;
-  authUserId: string;
-  email: string;
-  name: string | null;
-  emailVerified: boolean;
-  schoolEmail: boolean;
-};
+import { isAuthSessionError } from "./auth-session-error";
+import { toAppUser, type CurrentAppUser } from "./current-app-user.mapper";
 
-function isAuthSessionErrorMessage(message: string) {
-  return /session|jwt|token|unauthorized/i.test(message);
-}
+export { toAppUser, type AppUserRow, type CurrentAppUser } from "./current-app-user.mapper";
 
-export async function getCurrentAppUser() {
+/**
+ * Resolves the caller's application identity from the Supabase session.
+ *
+ * This uses the session-bound server client ONLY: identity resolution must
+ * never rely on the service-role client, because that would bypass RLS and
+ * could be tricked into resolving an identity the caller does not hold a
+ * valid session for.
+ *
+ * Every server module that needs the caller's identity should go through this
+ * function rather than trusting a client-supplied user id. The mapping from
+ * `auth.uid()` to bigint `public.users.id` is enforced by `toAppUser()`.
+ */
+export async function getCurrentAppUser(): Promise<CurrentAppUser | null> {
   const supabase = await createServerClient();
   const {
     data: { user },
@@ -26,7 +27,7 @@ export async function getCurrentAppUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
-    if (isAuthSessionErrorMessage(error.message)) {
+    if (isAuthSessionError(error)) {
       return null;
     }
 
@@ -37,10 +38,9 @@ export async function getCurrentAppUser() {
     return null;
   }
 
-  const admin = createAdminClient();
-  const { data: appUser, error: appUserError } = await admin
+  const { data: appUser, error: appUserError } = await supabase
     .from("users")
-    .select("id, auth_user_id, email, name")
+    .select("id, auth_user_id, email")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -52,23 +52,5 @@ export async function getCurrentAppUser() {
     return null;
   }
 
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("user_id", appUser.id)
-    .maybeSingle();
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  return {
-    id: appUser.id,
-    profileId: profile?.id ?? null,
-    authUserId: appUser.auth_user_id,
-    email: appUser.email,
-    name: appUser.name,
-    emailVerified: Boolean(user.email_confirmed_at),
-    schoolEmail: isSchoolEmail(appUser.email),
-  } satisfies AppUserRecord;
+  return toAppUser(appUser, user.id);
 }

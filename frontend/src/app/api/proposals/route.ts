@@ -1,7 +1,7 @@
 import {
-  createProposal,
+  createProposalForSession,
   normalizeProposalPayload,
-} from "@/features/applications/server/proposals";
+} from "@/features/proposals/server/proposals";
 import {
   apiCreated,
   apiErrorFromUnknown,
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const values = normalizeProposalPayload(body);
-    const proposal = await createProposal(values);
+    const proposal = await createProposalForSession(values);
 
     if (!proposal) {
       return apiUnauthorized();

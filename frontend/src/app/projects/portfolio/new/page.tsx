@@ -3,13 +3,13 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { FileDropField } from "@/shared/components/file-drop-field";
-import { useAppData } from "@/shared/lib/app-data-context";
+import { FileDropField, IMAGE_AND_VIDEO_FILE_ACCEPT } from "@/shared/components/file-drop-field";
+import { usePortfolioMutations } from "@/features/portfolios/hooks/use-portfolio-mutations";
 import { roles as roleOptions } from "@/shared/constants";
 
 export default function NewPortfolioPage() {
   const router = useRouter();
-  const { createPortfolio, portfolioSaveState } = useAppData();
+  const { createPortfolio, portfolioSaveState } = usePortfolioMutations();
 
   const [title, setTitle] = useState("");
   const [role, setRole] = useState(roleOptions[0]);
@@ -60,22 +60,29 @@ export default function NewPortfolioPage() {
         </p>
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>
-          <input
-            className="w-full border-none bg-transparent text-3xl font-black tracking-[0] text-slate-950 outline-none placeholder:text-slate-300 sm:text-4xl"
-            placeholder="작업물 제목을 입력하세요"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
+          <label className="grid gap-2 text-sm font-extrabold text-slate-700">
+            <span>
+              작업물 제목 <span className="text-rose-600">*</span>
+            </span>
+            <input
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-2xl font-black tracking-[0] text-slate-950 outline-none placeholder:text-slate-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-100 sm:text-3xl"
+              placeholder="작업물 제목을 입력하세요"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </label>
 
           <FileDropField
             label="대표 이미지 (선택)"
             helperText="완성 컷, 스크린샷, 시연 GIF 등 대표 이미지를 올려주세요. 파일이 없어도 외부 링크만으로 등록할 수 있어요."
-            accept="image/*,video/*"
+            accept={IMAGE_AND_VIDEO_FILE_ACCEPT}
             onFileSelect={(file) => setCoverFileName(file?.name)}
           />
 
           <label className="grid gap-2 text-sm font-extrabold text-slate-700">
-            한 줄 소개
+            <span>
+              한 줄 소개 <span className="text-rose-600">*</span>
+            </span>
             <input
               className="rounded-lg border border-slate-300 bg-white px-3 py-3 font-medium outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
               placeholder="목록에서 바로 보이는 짧은 요약을 적어주세요"
@@ -85,7 +92,9 @@ export default function NewPortfolioPage() {
           </label>
 
           <label className="grid gap-2 text-sm font-extrabold text-slate-700">
-            본문
+            <span>
+              본문 <span className="text-rose-600">*</span>
+            </span>
             <textarea
               className="min-h-64 rounded-lg border border-slate-300 bg-white px-3 py-3 font-medium leading-7 outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
               placeholder={"작업 배경, 맡은 역할, 어려웠던 점과 해결 과정을 자유롭게 작성해보세요."}

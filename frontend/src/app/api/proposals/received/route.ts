@@ -1,4 +1,4 @@
-import { listReceivedApplications } from "@/features/applications/server/applications";
+import { listReceivedProposalsForSession } from "@/features/proposals/server/proposals";
 import {
   apiErrorFromUnknown,
   apiOk,
@@ -7,13 +7,13 @@ import {
 
 export async function GET() {
   try {
-    const applications = await listReceivedApplications();
+    const proposals = await listReceivedProposalsForSession();
 
-    if (!applications) {
+    if (!proposals) {
       return apiUnauthorized();
     }
 
-    return apiOk(applications);
+    return apiOk(proposals);
   } catch (error) {
     return apiErrorFromUnknown(error);
   }

@@ -1,4 +1,4 @@
-import { listMyPortfolios } from "@/features/portfolios/server/portfolios";
+import { listSentProposalsForSession } from "@/features/proposals/server/proposals";
 import {
   apiErrorFromUnknown,
   apiOk,
@@ -7,13 +7,13 @@ import {
 
 export async function GET() {
   try {
-    const portfolios = await listMyPortfolios();
+    const proposals = await listSentProposalsForSession();
 
-    if (!portfolios) {
+    if (!proposals) {
       return apiUnauthorized();
     }
 
-    return apiOk(portfolios);
+    return apiOk(proposals);
   } catch (error) {
     return apiErrorFromUnknown(error);
   }

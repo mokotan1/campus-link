@@ -2,6 +2,21 @@
 
 import { useId, useRef, useState, type DragEvent } from "react";
 
+export const IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp,.gif";
+export const IMAGE_AND_VIDEO_FILE_ACCEPT = `${IMAGE_FILE_ACCEPT},.mp4,.webm`;
+
+const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
+
+const mimeTypeByExtension: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+};
+
 type FileDropFieldProps = {
   label: string;
   helperText: string;
@@ -15,14 +30,53 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
 
-export function FileDropField({ label, helperText, accept = "image/*,video/*", onFileSelect }: FileDropFieldProps) {
+function getFileExtension(fileName: string) {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex >= 0 ? fileName.slice(lastDotIndex).toLowerCase() : "";
+}
+
+function validateFile(file: File, accept: string) {
+  const allowedExtensions = accept
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => value.startsWith("."));
+  const extension = getFileExtension(file.name);
+  const expectedMimeType = mimeTypeByExtension[extension];
+
+  if (!expectedMimeType || !allowedExtensions.includes(extension)) {
+    return `${allowedExtensions.map((value) => value.slice(1).toUpperCase()).join(", ")} 형식의 파일만 선택할 수 있습니다.`;
+  }
+
+  if (file.type !== expectedMimeType) {
+    return "파일 확장자와 파일 형식이 일치하지 않습니다.";
+  }
+
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return "파일 크기는 20MB 이하여야 합니다.";
+  }
+
+  return null;
+}
+
+export function FileDropField({ label, helperText, accept = IMAGE_AND_VIDEO_FILE_ACCEPT, onFileSelect }: FileDropFieldProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   function applyFile(nextFile: File | null) {
+    if (nextFile) {
+      const validationError = validateFile(nextFile, accept);
+
+      if (validationError) {
+        setFileError(validationError);
+        return false;
+      }
+    }
+
+    setFileError(null);
     setFile(nextFile);
     onFileSelect?.(nextFile);
 
@@ -30,6 +84,8 @@ export function FileDropField({ label, helperText, accept = "image/*,video/*", o
       if (current) URL.revokeObjectURL(current);
       return nextFile && nextFile.type.startsWith("image/") ? URL.createObjectURL(nextFile) : null;
     });
+
+    return true;
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
@@ -49,40 +105,53 @@ export function FileDropField({ label, helperText, accept = "image/*,video/*", o
       <label htmlFor={inputId}>{label}</label>
 
       {!file ? (
-        <div
-          className={`grid min-h-32 cursor-pointer place-items-center rounded-lg border border-dashed p-5 text-center text-sm font-bold leading-6 transition ${
-            isDragging ? "border-teal-700 bg-teal-50 text-teal-700" : "border-slate-400 bg-slate-50 text-slate-500 hover:border-teal-700 hover:bg-white"
-          }`}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
+        <>
+          <div
+            className={`grid min-h-32 cursor-pointer place-items-center rounded-lg border border-dashed p-5 text-center text-sm font-bold leading-6 transition ${
+              isDragging
+                ? "border-teal-700 bg-teal-50 text-teal-700"
+                : fileError
+                  ? "border-rose-400 bg-rose-50 text-rose-700"
+                  : "border-slate-400 bg-slate-50 text-slate-500 hover:border-teal-700 hover:bg-white"
+            }`}
+            onDragOver={(event) => {
               event.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-        >
-          <input
-            ref={inputRef}
-            id={inputId}
-            className="sr-only"
-            type="file"
-            accept={accept}
-            onChange={(event) => applyFile(event.target.files?.[0] ?? null)}
-          />
-          <span>
-            {helperText}
-            <br />
-            <span className="mt-1 inline-block text-xs font-medium text-slate-400">클릭하거나 파일을 끌어다 놓으세요</span>
-          </span>
-        </div>
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+          >
+            <input
+              ref={inputRef}
+              id={inputId}
+              className="sr-only"
+              type="file"
+              accept={accept}
+              onChange={(event) => {
+                if (!applyFile(event.target.files?.[0] ?? null)) {
+                  event.currentTarget.value = "";
+                }
+              }}
+            />
+            <span>
+              {helperText}
+              <br />
+              <span className="mt-1 inline-block text-xs font-medium text-slate-400">
+                허용 형식: {accept.replaceAll(".", "").toUpperCase()} · 최대 20MB
+              </span>
+            </span>
+          </div>
+          {fileError && <p className="text-sm font-bold text-rose-700" role="alert">{fileError}</p>}
+        </>
       ) : (
         <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white p-3">
           {previewUrl ? (
