@@ -96,7 +96,6 @@ type ProjectRow = {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
-  cover_image_name: string | null;
 };
 
 export function normalizeProjectPayload(body: unknown): ProjectFormValues {
@@ -202,7 +201,7 @@ function mapProjectRow(
     startDate: row.start_date,
     endDate: row.end_date,
     createdAt: row.created_at,
-    coverImageName: row.cover_image_name,
+    coverImageName: null,
     owner: {
       userId: row.owner_user_id,
       profileId: profileIds.get(row.owner_user_id) ?? null,
@@ -247,7 +246,7 @@ export async function listProjects(filters: ProjectListFilters) {
   let query = admin
     .from("projects")
     .select(
-      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name"
+      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at"
     )
     .order("created_at", { ascending: false });
 
@@ -299,7 +298,7 @@ export async function getProjectById(projectId: number) {
   const { data: project, error } = await admin
     .from("projects")
     .select(
-      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name"
+      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at"
     )
     .eq("id", projectId)
     .maybeSingle();
@@ -365,10 +364,9 @@ export async function createProject(values: ProjectFormValues) {
       expected_member_count: values.expectedMemberCount,
       start_date: values.startDate || null,
       end_date: values.endDate || null,
-      cover_image_name: values.coverImageName || null,
     })
     .select(
-      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name"
+      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at"
     )
     .single();
 
@@ -439,11 +437,10 @@ export async function updateProject(projectId: number, values: ProjectFormValues
       expected_member_count: values.expectedMemberCount,
       start_date: values.startDate || null,
       end_date: values.endDate || null,
-      cover_image_name: values.coverImageName || null,
     })
     .eq("id", projectId)
     .select(
-      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name"
+      "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at"
     )
     .single();
 

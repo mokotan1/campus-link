@@ -33,7 +33,6 @@ type PortfolioRow = {
   role_in_work: string | null;
   tools: string[] | null;
   created_at: string;
-  cover_image_name: string | null;
 };
 
 function toStringArray(value: unknown) {
@@ -56,7 +55,7 @@ function mapPortfolioRow(row: PortfolioRow) {
     roleInWork: row.role_in_work ?? "",
     tools: row.tools ?? [],
     createdAt: row.created_at,
-    coverImageName: row.cover_image_name,
+    coverImageName: null,
   } satisfies PortfolioRecord;
 }
 
@@ -107,7 +106,7 @@ export async function listMyPortfolios() {
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
+    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
     .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false });
 
@@ -130,7 +129,7 @@ export async function createPortfolio(values: PortfolioFormValues) {
   const admin = createAdminClient();
   const { data: existing, error: existingError } = await admin
     .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
+    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
     .eq("user_id", currentUser.id)
     .eq("external_url", values.externalUrl)
     .maybeSingle();
@@ -147,10 +146,9 @@ export async function createPortfolio(values: PortfolioFormValues) {
         description: values.description || null,
         role_in_work: values.roleInWork || null,
         tools: values.tools,
-        cover_image_name: values.coverImageName || null,
       })
       .eq("id", existing.id)
-      .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
+      .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
       .single();
 
     if (error) {
@@ -170,9 +168,8 @@ export async function createPortfolio(values: PortfolioFormValues) {
       external_url: values.externalUrl,
       role_in_work: values.roleInWork || null,
       tools: values.tools,
-      cover_image_name: values.coverImageName || null,
     })
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
+    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
     .single();
 
   if (error) {
@@ -204,7 +201,7 @@ export async function listPortfoliosByProfileId(profileId: number) {
 
   const { data, error } = await admin
     .from("portfolio_items")
-    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at, cover_image_name")
+    .select("id, user_id, title, description, external_url, role_in_work, tools, created_at")
     .eq("user_id", profile.user_id)
     .order("created_at", { ascending: false });
 

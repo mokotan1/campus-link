@@ -40,7 +40,7 @@ export async function getCurrentAppUser() {
   const admin = createAdminClient();
   const { data: appUser, error: appUserError } = await admin
     .from("users")
-    .select("id, auth_user_id, email, name, email_verified")
+    .select("id, auth_user_id, email, name")
     .eq("auth_user_id", user.id)
     .maybeSingle();
 
@@ -68,7 +68,7 @@ export async function getCurrentAppUser() {
     authUserId: appUser.auth_user_id,
     email: appUser.email,
     name: appUser.name,
-    emailVerified: Boolean(user.email_confirmed_at || appUser.email_verified),
+    emailVerified: Boolean(user.email_confirmed_at),
     schoolEmail: isSchoolEmail(appUser.email),
   } satisfies AppUserRecord;
 }
