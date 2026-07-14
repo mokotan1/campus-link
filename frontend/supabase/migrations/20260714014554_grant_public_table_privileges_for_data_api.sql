@@ -1,23 +1,28 @@
--- Environment repair: restore Data API table privileges for roles used by
--- PostgREST / RLS tests. Local migrations create tables as postgres; after
--- Supabase 2026 defaults, those tables are no longer auto-exposed with
--- SELECT/INSERT/UPDATE/DELETE for anon/authenticated/service_role.
---
--- Keep this separate from feature migrations (see project-recruitment plan Task 1
--- Step 4). RLS remains the row-level authorization boundary.
+-- Environment repair: Data API privileges for PostgREST + RLS.
+-- Separate from feature migrations (plan Task 1 Step 4).
+-- Do NOT grant DML to anon — MVP policies target authenticated only.
+-- Do NOT use ON ALL TABLES or ALTER DEFAULT PRIVILEGES for anon
+-- (avoids undoing Supabase 2026 opt-in Data API defaults).
 
-grant usage on schema public to anon, authenticated, service_role;
+grant usage on schema public to authenticated, service_role;
 
-grant select, insert, update, delete on all tables in schema public
-  to anon, authenticated, service_role;
+grant select, insert, update, delete on
+  public.users,
+  public.profiles,
+  public.portfolio_items,
+  public.projects,
+  public.applications,
+  public.proposals
+  to authenticated, service_role;
 
 grant usage, select on all sequences in schema public
-  to anon, authenticated, service_role;
+  to authenticated, service_role;
 
+-- Future tables created by postgres: authenticate/service_role only
 alter default privileges for role postgres in schema public
   grant select, insert, update, delete on tables
-  to anon, authenticated, service_role;
+  to authenticated, service_role;
 
 alter default privileges for role postgres in schema public
   grant usage, select on sequences
-  to anon, authenticated, service_role;
+  to authenticated, service_role;

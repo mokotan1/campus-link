@@ -75,6 +75,46 @@ END;
 $schema$;
 
 -- ---------------------------------------------------------------------------
+-- Step 1b: Data API privilege contract (least-privilege grants)
+-- ---------------------------------------------------------------------------
+
+DO $grants$
+DECLARE
+  tbl text;
+  priv text;
+  mvp_tables text[] := ARRAY[
+    'projects',
+    'applications',
+    'proposals'
+  ];
+  dml_privs text[] := ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+BEGIN
+  FOREACH tbl IN ARRAY mvp_tables LOOP
+    FOREACH priv IN ARRAY dml_privs LOOP
+      IF NOT has_table_privilege('authenticated', 'public.' || tbl, priv) THEN
+        RAISE EXCEPTION
+          '[FAIL] authenticated missing % on public.%', priv, tbl;
+      END IF;
+    END LOOP;
+    RAISE NOTICE
+      '[PASS] authenticated has SELECT/INSERT/UPDATE/DELETE on public.%', tbl;
+  END LOOP;
+
+  IF has_table_privilege('anon', 'public.projects', 'INSERT') THEN
+    RAISE EXCEPTION '[FAIL] anon must NOT have INSERT on public.projects';
+  END IF;
+
+  RAISE NOTICE '[PASS] anon does not have INSERT on public.projects';
+
+  IF has_table_privilege('anon', 'public.projects', 'SELECT') THEN
+    RAISE EXCEPTION '[FAIL] anon must NOT have SELECT on public.projects';
+  END IF;
+
+  RAISE NOTICE '[PASS] anon does not have SELECT on public.projects';
+END;
+$grants$;
+
+-- ---------------------------------------------------------------------------
 -- Auth / app-user fixtures (distinct from rls-p0.sql subjects)
 -- ---------------------------------------------------------------------------
 
@@ -90,6 +130,7 @@ DECLARE
 
   future_project_id bigint;
   expired_project_id bigint;
+  today_deadline_project_id bigint;
   legacy_null_project_id bigint;
   backfill_project_id bigint;
 BEGIN
@@ -229,6 +270,31 @@ BEGIN
   )
   RETURNING id INTO expired_project_id;
 
+  -- Boundary: recruitment_deadline = current_date remains eligible (>=).
+  INSERT INTO public.projects (
+    owner_user_id,
+    title,
+    summary,
+    project_type,
+    collaboration_mode,
+    recruitment_status,
+    required_roles,
+    recruitment_deadline,
+    project_status
+  )
+  VALUES (
+    owner_user_id,
+    'Rec Today Deadline Recruiting',
+    'eligible on deadline day (boundary >=)',
+    'TEAM',
+    'ONLINE',
+    'RECRUITING',
+    ARRAY['QA'],
+    current_date,
+    'PREPARING'
+  )
+  RETURNING id INTO today_deadline_project_id;
+
   INSERT INTO public.projects (
     owner_user_id,
     title,
@@ -261,6 +327,7 @@ BEGIN
   PERFORM set_config('rec.receiver_user_id', receiver_user_id::text, true);
   PERFORM set_config('rec.future_project_id', future_project_id::text, true);
   PERFORM set_config('rec.expired_project_id', expired_project_id::text, true);
+  PERFORM set_config('rec.today_deadline_project_id', today_deadline_project_id::text, true);
   PERFORM set_config('rec.legacy_null_project_id', legacy_null_project_id::text, true);
   PERFORM set_config('rec.backfill_project_id', backfill_project_id::text, true);
 END;
@@ -602,6 +669,8 @@ DECLARE
   receiver_user_id bigint := current_setting('rec.receiver_user_id')::bigint;
   future_project_id bigint := current_setting('rec.future_project_id')::bigint;
   expired_project_id bigint := current_setting('rec.expired_project_id')::bigint;
+  today_deadline_project_id bigint :=
+    current_setting('rec.today_deadline_project_id')::bigint;
   legacy_null_project_id bigint := current_setting('rec.legacy_null_project_id')::bigint;
 BEGIN
   -- non-owner can read future recruiting project
@@ -610,6 +679,13 @@ BEGIN
     format('SELECT 1 FROM public.projects WHERE id = %s', future_project_id),
     1,
     'non-owner can read future recruiting project'
+  );
+
+  -- non-owner can read recruiting project on deadline day (boundary >=)
+  PERFORM pg_temp.rls_assert_count(
+    format('SELECT 1 FROM public.projects WHERE id = %s', today_deadline_project_id),
+    1,
+    'non-owner can read recruiting project with deadline = current_date'
   );
 
   -- non-owner cannot read expired recruiting project
@@ -640,6 +716,20 @@ BEGIN
       applicant_user_id
     ),
     'applicant can apply to future recruiting project'
+  );
+
+  -- applicant can apply on deadline day (boundary >=)
+  PERFORM pg_temp.rls_assert_insert_ok(
+    format(
+      $sql$
+      INSERT INTO public.applications (
+        project_id, applicant_user_id, application_status, target_role
+      ) VALUES (%s, %s, 'PENDING', 'QA')
+      $sql$,
+      today_deadline_project_id,
+      applicant_user_id
+    ),
+    'applicant can apply to recruiting project with deadline = current_date'
   );
 
   -- applicant cannot apply to expired recruiting project
