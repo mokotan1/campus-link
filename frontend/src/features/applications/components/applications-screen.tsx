@@ -25,8 +25,12 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
   const [direction, setDirection] = useState<Direction>("sent");
   const [processingApplicationId, setProcessingApplicationId] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  const sent = useMemo(() => applications.filter((item) => item.direction === "sent"), [applications]);
+  const sent = useMemo(
+    () => applications.filter((item) => item.direction === "sent" && item.status !== "취소"),
+    [applications],
+  );
   const received = useMemo(() => applications.filter((item) => item.direction === "received"), [applications]);
 
   const visible = direction === "sent" ? sent : received;
@@ -38,6 +42,7 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
 
     setProcessingApplicationId(application.id);
     setActionError(null);
+    setActionMessage(null);
 
     try {
       const result = await readApiResponse<ApplicationActionResponse>(
@@ -51,6 +56,10 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
             : item,
         ),
       );
+
+      if (action === "withdraw") {
+        setActionMessage("지원이 취소되었습니다.");
+      }
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : "지원 상태를 변경하지 못했습니다. 다시 시도해주세요.",
@@ -83,7 +92,7 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
         <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Applications</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
           <h1 className="text-3xl font-black tracking-[0] sm:text-4xl">내 지원 현황</h1>
-          <span className="text-sm font-extrabold text-slate-500">{applications.length}건</span>
+          <span className="text-sm font-extrabold text-slate-500">{sent.length + received.length}건</span>
         </div>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
           프로젝트에 지원한 내역은 &quot;내가 보낸 지원&quot;에, 내 프로젝트에 들어온 지원은 &quot;내가 받은 지원&quot;에서
@@ -118,6 +127,12 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
         {actionError && (
           <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
             {actionError}
+          </p>
+        )}
+
+        {actionMessage && (
+          <p className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+            {actionMessage}
           </p>
         )}
 
@@ -179,7 +194,7 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
           {visible.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm font-bold text-slate-500">
-                {direction === "sent" ? "아직 지원한 내역이 없습니다." : "아직 받은 지원이 없습니다."}
+                {direction === "sent" ? "진행 중인 지원이 없습니다." : "아직 받은 지원이 없습니다."}
               </p>
               <Link href="/projects" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
                 프로젝트 보러 가기
