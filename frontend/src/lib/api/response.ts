@@ -1,4 +1,9 @@
-import { AppError, INTERNAL_ERROR_MESSAGE } from "./error.ts";
+import {
+  AppError,
+  getAppErrorStatus,
+  INTERNAL_ERROR_MESSAGE,
+  isAppError,
+} from "./error.ts";
 
 export type ApiErrorBody = {
   code: AppError["code"];
@@ -18,9 +23,9 @@ export function resolveApiError(error: unknown): {
   status: number;
   body: { success: false; error: ApiErrorBody };
 } {
-  if (error instanceof AppError) {
+  if (isAppError(error)) {
     return {
-      status: error.status,
+      status: getAppErrorStatus(error),
       body: { success: false, error: formatErrorBody(error) },
     };
   }
