@@ -36,6 +36,12 @@ begin
 end;
 $$;
 
+-- Normalize legacy non-positive counts before enforcing the CHECK.
+update public.projects
+set expected_member_count = null
+where expected_member_count is not null
+  and expected_member_count <= 0;
+
 do $$
 begin
   if not exists (

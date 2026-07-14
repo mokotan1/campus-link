@@ -6,6 +6,28 @@
 
 grant usage on schema public to authenticated, service_role;
 
+-- Explicitly revoke anon DML (least privilege). Do not grant TRUNCATE /
+-- REFERENCES / TRIGGER to application roles.
+revoke select, insert, update, delete on
+  public.users,
+  public.profiles,
+  public.portfolio_items,
+  public.projects,
+  public.applications,
+  public.proposals
+  from anon;
+
+revoke usage, select on all sequences in schema public from anon;
+
+alter default privileges for role postgres in schema public
+  revoke select, insert, update, delete on tables from anon;
+
+alter default privileges for role postgres in schema public
+  revoke usage, select on sequences from anon;
+
+alter default privileges for role postgres in schema public
+  revoke execute on functions from public, anon;
+
 grant select, insert, update, delete on
   public.users,
   public.profiles,

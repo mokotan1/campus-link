@@ -111,6 +111,15 @@ BEGIN
   END IF;
 
   RAISE NOTICE '[PASS] anon does not have SELECT on public.projects';
+
+  -- Least-privilege: anon must retain no MVP table DML after revoke.
+  IF has_table_privilege('anon', 'public.projects', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_table_privilege('anon', 'public.applications', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_table_privilege('anon', 'public.proposals', 'SELECT,INSERT,UPDATE,DELETE') THEN
+    RAISE EXCEPTION '[FAIL] anon retains MVP table DML';
+  END IF;
+
+  RAISE NOTICE '[PASS] anon retains no MVP table DML on projects/applications/proposals';
 END;
 $grants$;
 
@@ -620,6 +629,19 @@ BEGIN
 
   RAISE NOTICE
     '[PASS] every non-null end_date has matching recruitment_deadline';
+
+  -- Migration UPDATE nulls legacy zeros before the positive CHECK; after
+  -- migration no non-positive expected_member_count may remain.
+  IF EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE expected_member_count IS NOT NULL
+      AND expected_member_count <= 0
+  ) THEN
+    RAISE EXCEPTION '[FAIL] non-positive expected_member_count remains';
+  END IF;
+
+  RAISE NOTICE '[PASS] no non-positive expected_member_count remains';
 
   IF NOT EXISTS (
     SELECT 1
