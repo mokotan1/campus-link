@@ -44,11 +44,13 @@ BEGIN
       AND table_name = 'projects'
       AND column_name = 'recruitment_deadline'
       AND data_type = 'date'
+      AND is_nullable = 'YES'
   ) THEN
-    RAISE EXCEPTION '[FAIL] projects.recruitment_deadline date missing';
+    RAISE EXCEPTION
+      '[FAIL] projects.recruitment_deadline date nullable (is_nullable = YES) missing';
   END IF;
 
-  RAISE NOTICE '[PASS] projects.recruitment_deadline date';
+  RAISE NOTICE '[PASS] projects.recruitment_deadline date nullable';
 
   IF NOT EXISTS (
     SELECT 1
@@ -150,7 +152,9 @@ BEGIN
   SELECT id INTO applicant_user_id FROM public.users WHERE auth_user_id = applicant_auth_id;
   SELECT id INTO receiver_user_id FROM public.users WHERE auth_user_id = receiver_auth_id;
 
-  -- Backfill integrity fixture: end_date and recruitment_deadline must match.
+  -- Backfill integrity fixture: non-null end_date with matching recruitment_deadline.
+  -- Full migration backfill against a reset DB + migration UPDATE is proven by Task 4.
+  -- Step 3 below also proves the migration backfill SQL in-test (null then UPDATE).
   INSERT INTO public.projects (
     owner_user_id,
     title,
@@ -501,9 +505,42 @@ $integrity$;
 -- ---------------------------------------------------------------------------
 -- Step 3: Backfill consistency + index assertions
 -- ---------------------------------------------------------------------------
+-- Matching end_date/recruitment_deadline fixture proves the invariant holds.
+-- In-test UPDATE below proves the migration backfill SQL itself.
+-- Full migration backfill is proven by Task 4 against reset DB + migration UPDATE.
 
 DO $backfill_indexes$
+DECLARE
+  backfill_project_id bigint := current_setting('rec.backfill_project_id')::bigint;
 BEGIN
+  -- Prove migration backfill SQL: clear deadline, then re-copy from end_date.
+  RESET role;
+  UPDATE public.projects
+  SET recruitment_deadline = NULL
+  WHERE id = backfill_project_id
+    AND end_date IS NOT NULL;
+
+  UPDATE public.projects
+  SET recruitment_deadline = end_date
+  WHERE recruitment_deadline IS NULL
+    AND end_date IS NOT NULL;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.projects
+    WHERE id = backfill_project_id
+      AND (
+        recruitment_deadline IS NULL
+        OR recruitment_deadline IS DISTINCT FROM end_date
+      )
+  ) THEN
+    RAISE EXCEPTION
+      '[FAIL] in-test backfill UPDATE did not restore recruitment_deadline = end_date';
+  END IF;
+
+  RAISE NOTICE
+    '[PASS] migration backfill SQL restores recruitment_deadline from end_date';
+
   IF EXISTS (
     SELECT 1
     FROM public.projects
@@ -656,6 +693,36 @@ BEGIN
     format('SELECT 1 FROM public.projects WHERE id = %s', legacy_null_project_id),
     1,
     'legacy recruiting project with null deadline remains eligible'
+  );
+
+  -- applicant can apply to legacy null-deadline recruiting project
+  PERFORM pg_temp.rls_assert_insert_ok(
+    format(
+      $sql$
+      INSERT INTO public.applications (
+        project_id, applicant_user_id, application_status, target_role
+      ) VALUES (%s, %s, 'PENDING', 'PM')
+      $sql$,
+      legacy_null_project_id,
+      applicant_user_id
+    ),
+    'applicant can apply to legacy null-deadline recruiting project'
+  );
+
+  -- owner can propose from legacy null-deadline recruiting project
+  PERFORM pg_temp.rls_set_auth(owner_auth_id);
+  PERFORM pg_temp.rls_assert_insert_ok(
+    format(
+      $sql$
+      INSERT INTO public.proposals (
+        project_id, sender_user_id, receiver_user_id, message, proposal_status
+      ) VALUES (%s, %s, %s, 'legacy invite', 'PENDING')
+      $sql$,
+      legacy_null_project_id,
+      owner_user_id,
+      receiver_user_id
+    ),
+    'owner can propose from legacy null-deadline recruiting project'
   );
 
   PERFORM pg_temp.rls_reset_role();
