@@ -122,15 +122,24 @@ test("actor must be email verified and onboarding complete", () => {
   );
 });
 
-test("proposal receiver must be onboarding complete and collaboration OPEN", () => {
+test("proposal receiver must be verified, onboarding complete, and collaboration OPEN", () => {
   assert.doesNotThrow(() =>
     assertProposalReceiverEligible({
-      email_verified: false,
+      email_verified: true,
       onboarding_completed: true,
       collaboration_status: "OPEN",
     }),
   );
 
+  assertAppError(
+    () =>
+      assertProposalReceiverEligible({
+        email_verified: false,
+        onboarding_completed: true,
+        collaboration_status: "OPEN",
+      }),
+    "FORBIDDEN",
+  );
   assertAppError(
     () =>
       assertProposalReceiverEligible({

@@ -18,7 +18,7 @@ const ACTOR_INELIGIBLE_MESSAGE =
   "이메일 인증과 온보딩을 완료한 사용자만 지원하거나 제안할 수 있습니다.";
 
 const RECEIVER_INELIGIBLE_MESSAGE =
-  "온보딩을 완료하고 협업 가능 상태인 사용자에게만 제안할 수 있습니다.";
+  "이메일 인증과 온보딩을 완료하고 협업 가능 상태인 사용자에게만 제안할 수 있습니다.";
 
 export function isoDateUtc(now = new Date()) {
   return now.toISOString().slice(0, 10);
@@ -44,7 +44,11 @@ export function assertActorEligible(profile: MatchingEligibility) {
 }
 
 export function assertProposalReceiverEligible(profile: MatchingEligibility) {
-  if (!profile.onboarding_completed || profile.collaboration_status !== "OPEN") {
+  if (
+    !profile.email_verified ||
+    !profile.onboarding_completed ||
+    profile.collaboration_status !== "OPEN"
+  ) {
     throw new AppError("FORBIDDEN", RECEIVER_INELIGIBLE_MESSAGE);
   }
 }

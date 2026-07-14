@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { MatchingEligibility } from "@/features/matching/server/recruitment-eligibility";
 import type { Tables } from "@/lib/supabase/database.types";
 import { throwAppErrorFromRpc } from "@/lib/supabase/rpc-error";
 import { createClient } from "@/lib/supabase/server";
@@ -16,16 +17,37 @@ type ProposalRow = Pick<
   | "updated_at"
 >;
 
+/** Local until generated database.types includes recruitment_deadline. */
 type ProjectSummaryRow = Pick<
   Tables<"projects">,
   "id" | "owner_user_id" | "title" | "campus" | "recruitment_status"
->;
+> & {
+  recruitment_deadline: string | null;
+};
+
+/** Local until generated database.types includes get_matching_eligibility. */
+type MatchingEligibilityRpcRow = {
+  user_id: number;
+  email_verified: boolean;
+  onboarding_completed: boolean;
+  collaboration_status: string;
+};
+
+type UntypedRpcClient = {
+  rpc(
+    fn: "get_matching_eligibility",
+    args: { p_user_id: number },
+  ): PromiseLike<{
+    data: MatchingEligibilityRpcRow[] | MatchingEligibilityRpcRow | null;
+    error: { message: string } | null;
+  }>;
+};
 
 const PROPOSAL_SELECT =
   "id, project_id, sender_user_id, receiver_user_id, message, proposal_status, created_at, updated_at" as const;
 
 const PROJECT_SUMMARY_SELECT =
-  "id, owner_user_id, title, campus, recruitment_status" as const;
+  "id, owner_user_id, title, campus, recruitment_status, recruitment_deadline" as const;
 
 export type ProjectSummary = ProjectSummaryRow;
 
@@ -68,8 +90,19 @@ function mapProposalRow(
   };
 }
 
+function mapMatchingEligibility(
+  row: MatchingEligibilityRpcRow,
+): MatchingEligibility {
+  return {
+    email_verified: row.email_verified,
+    onboarding_completed: row.onboarding_completed,
+    collaboration_status: row.collaboration_status,
+  };
+}
+
 export interface ProposalRepository {
   findProjectSummary(projectId: number): Promise<ProjectSummary | null>;
+  findMatchingEligibility(userId: number): Promise<MatchingEligibility | null>;
   findExisting(
     projectId: number,
     senderUserId: number,
@@ -106,7 +139,12 @@ async function loadProjectMap(projectIds: number[]) {
     throw new Error(error.message);
   }
 
-  return new Map((projects ?? []).map((project) => [project.id, project]));
+  return new Map(
+    ((projects ?? []) as unknown as ProjectSummaryRow[]).map((project) => [
+      project.id,
+      project,
+    ]),
+  );
 }
 
 export const proposalRepository: ProposalRepository = {
@@ -122,7 +160,22 @@ export const proposalRepository: ProposalRepository = {
       throw new Error(error.message);
     }
 
-    return project ?? null;
+    return (project as unknown as ProjectSummaryRow | null) ?? null;
+  },
+
+  async findMatchingEligibility(userId) {
+    const supabase = await createClient();
+    const { data, error } = await (supabase as unknown as UntypedRpcClient).rpc(
+      "get_matching_eligibility",
+      { p_user_id: userId },
+    );
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const row = Array.isArray(data) ? (data[0] ?? null) : data;
+    return row ? mapMatchingEligibility(row) : null;
   },
 
   async findExisting(projectId, senderUserId, receiverUserId) {
@@ -243,4 +296,3 @@ export const proposalRepository: ProposalRepository = {
     return data as ProposalRow;
   },
 };
-

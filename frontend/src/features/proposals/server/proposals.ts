@@ -2,6 +2,12 @@ import "server-only";
 
 import type { CurrentAppUser } from "@/features/auth/server/current-app-user.mapper";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import {
+  assertActorEligible,
+  assertProposalReceiverEligible,
+  assertRecruitmentOpen,
+  isoDateUtc,
+} from "@/features/matching/server/recruitment-eligibility";
 import { AppError } from "@/lib/api/error";
 
 import {
@@ -9,6 +15,7 @@ import {
   assertNoDuplicateProposal,
   assertPendingProposalStatus,
   assertProjectOwnerForProposal,
+  assertProposalReceiverExists,
   assertReceiverForProposalDecision,
 } from "./proposals.guards";
 import { proposalRepository, type ProposalRecord } from "./proposals.repository";
@@ -48,6 +55,19 @@ export async function createProposal(
   validateProposalPayload(values);
   assertDistinctProposalUsers(currentUser, values.receiverUserId!);
 
+  const senderEligibility = await proposalRepository.findMatchingEligibility(
+    currentUser.id,
+  );
+
+  if (!senderEligibility) {
+    throw new AppError(
+      "FORBIDDEN",
+      "이메일 인증과 온보딩을 완료한 사용자만 지원하거나 제안할 수 있습니다.",
+    );
+  }
+
+  assertActorEligible(senderEligibility);
+
   const project = await proposalRepository.findProjectSummary(values.projectId!);
 
   if (!project) {
@@ -55,6 +75,14 @@ export async function createProposal(
   }
 
   assertProjectOwnerForProposal(currentUser, project);
+  assertRecruitmentOpen(project, isoDateUtc());
+
+  const receiverEligibility = await proposalRepository.findMatchingEligibility(
+    values.receiverUserId!,
+  );
+
+  assertProposalReceiverExists(receiverEligibility);
+  assertProposalReceiverEligible(receiverEligibility);
 
   const existing = await proposalRepository.findExisting(
     values.projectId!,
@@ -143,4 +171,3 @@ export async function listReceivedProposalsForSession() {
 
   return listReceivedProposals(currentUser);
 }
-
