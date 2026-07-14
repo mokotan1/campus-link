@@ -170,24 +170,27 @@ export const projectRepository: ProjectRepository = {
 
   async create(ownerUserId, values) {
     const supabase = await createClient();
+    const insertPayload = {
+      owner_user_id: ownerUserId,
+      title: values.title,
+      summary: values.summary,
+      description: values.description || null,
+      project_type: values.projectType,
+      collaboration_mode: values.collaborationMode,
+      recruitment_status: values.recruitmentStatus,
+      campus: values.campus || null,
+      required_roles: values.requiredRoles,
+      tools: values.tools,
+      expected_member_count: values.expectedMemberCount,
+      start_date: values.startDate || null,
+      end_date: values.endDate || null,
+      // Interim: keep deadline in sync with endDate until B2 adds a dedicated field.
+      recruitment_deadline: values.endDate || null,
+      cover_image_name: values.coverImageName || null,
+    };
     const { data: project, error } = await supabase
       .from("projects")
-      .insert({
-        owner_user_id: ownerUserId,
-        title: values.title,
-        summary: values.summary,
-        description: values.description || null,
-        project_type: values.projectType,
-        collaboration_mode: values.collaborationMode,
-        recruitment_status: values.recruitmentStatus,
-        campus: values.campus || null,
-        required_roles: values.requiredRoles,
-        tools: values.tools,
-        expected_member_count: values.expectedMemberCount,
-        start_date: values.startDate || null,
-        end_date: values.endDate || null,
-        cover_image_name: values.coverImageName || null,
-      })
+      .insert(insertPayload as never)
       .select(PROJECT_SELECT)
       .single();
 
@@ -218,23 +221,26 @@ export const projectRepository: ProjectRepository = {
 
   async update(id, ownerUserId, values) {
     const supabase = await createClient();
+    const updatePayload = {
+      title: values.title,
+      summary: values.summary,
+      description: values.description || null,
+      project_type: values.projectType,
+      collaboration_mode: values.collaborationMode,
+      recruitment_status: values.recruitmentStatus,
+      campus: values.campus || null,
+      required_roles: values.requiredRoles,
+      tools: values.tools,
+      expected_member_count: values.expectedMemberCount,
+      start_date: values.startDate || null,
+      end_date: values.endDate || null,
+      // Interim: keep deadline in sync with endDate until B2 adds a dedicated field.
+      recruitment_deadline: values.endDate || null,
+      cover_image_name: values.coverImageName || null,
+    };
     const { data: project, error } = await supabase
       .from("projects")
-      .update({
-        title: values.title,
-        summary: values.summary,
-        description: values.description || null,
-        project_type: values.projectType,
-        collaboration_mode: values.collaborationMode,
-        recruitment_status: values.recruitmentStatus,
-        campus: values.campus || null,
-        required_roles: values.requiredRoles,
-        tools: values.tools,
-        expected_member_count: values.expectedMemberCount,
-        start_date: values.startDate || null,
-        end_date: values.endDate || null,
-        cover_image_name: values.coverImageName || null,
-      })
+      .update(updatePayload as never)
       .eq("id", id)
       .eq("owner_user_id", ownerUserId)
       .select(PROJECT_SELECT)

@@ -3,6 +3,7 @@ import "server-only";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 import { AppError } from "@/lib/api/error";
 
+import { listMyProjectsForUser } from "./projects.mapper";
 import { projectRepository } from "./projects.repository";
 
 export type ProjectFormValues = {
@@ -116,8 +117,9 @@ export async function listProjects(filters: ProjectListFilters) {
 
 export async function listMyProjectsForSession() {
   const currentUser = await getCurrentAppUser();
-  if (!currentUser) return null;
-  return projectRepository.listMine(currentUser.id);
+  return listMyProjectsForUser(currentUser, (ownerUserId) =>
+    projectRepository.listMine(ownerUserId),
+  );
 }
 
 export async function getProjectById(projectId: number) {
