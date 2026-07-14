@@ -2,12 +2,13 @@ import { AppError } from "../../../lib/api/error.ts";
 
 type ProjectAvailability = {
   recruitment_status: string;
-  end_date: string | null;
+  recruitment_deadline: string | null;
 };
 
 type ProjectDates = {
   startDate: string;
   endDate: string;
+  recruitmentDeadline: string;
 };
 
 function parseDateOnly(value: string) {
@@ -24,30 +25,30 @@ function toDateKey(date: Date) {
 }
 
 export function validateProjectDates(values: ProjectDates, referenceDate = new Date()) {
-  if (!values.endDate) {
+  if (!values.recruitmentDeadline) {
     throw new AppError("VALIDATION_ERROR", "모집 마감일은 필수입니다.");
   }
 
-  if (!parseDateOnly(values.endDate)) {
+  if (!parseDateOnly(values.recruitmentDeadline)) {
     throw new AppError("VALIDATION_ERROR", "모집 마감일 형식이 올바르지 않습니다.");
   }
 
-  if (values.endDate < toDateKey(referenceDate)) {
+  if (values.recruitmentDeadline < toDateKey(referenceDate)) {
     throw new AppError("VALIDATION_ERROR", "모집 마감일은 오늘 또는 미래 날짜여야 합니다.");
   }
 
-  if (!values.startDate) {
-    return;
-  }
-
-  if (!parseDateOnly(values.startDate)) {
+  if (values.startDate && !parseDateOnly(values.startDate)) {
     throw new AppError("VALIDATION_ERROR", "시작일 형식이 올바르지 않습니다.");
   }
 
-  if (values.startDate > values.endDate) {
+  if (values.endDate && !parseDateOnly(values.endDate)) {
+    throw new AppError("VALIDATION_ERROR", "종료일 형식이 올바르지 않습니다.");
+  }
+
+  if (values.startDate && values.endDate && values.startDate > values.endDate) {
     throw new AppError(
       "VALIDATION_ERROR",
-      "시작일은 모집 마감일보다 늦을 수 없습니다.",
+      "시작일은 종료일보다 늦을 수 없습니다.",
     );
   }
 }
@@ -56,7 +57,7 @@ export function isProjectAcceptingNewParticipants(
   project: ProjectAvailability,
   referenceDate = new Date(),
 ) {
-  const deadline = project.end_date;
+  const deadline = project.recruitment_deadline;
 
   return (
     project.recruitment_status === "RECRUITING" &&
