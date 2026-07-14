@@ -15,25 +15,95 @@ function assertAppError(fn, code) {
   });
 }
 
-test("requires a future recruitment deadline", () => {
+const referenceDate = new Date("2026-07-14T00:00:00.000Z");
+
+test("rejects a missing recruitment deadline", () => {
   assertAppError(
     () =>
       validateProjectDates(
-        { startDate: "2026-07-15", endDate: "2026-07-10" },
-        new Date("2026-07-14T00:00:00.000Z"),
+        { startDate: "", endDate: "", recruitmentDeadline: "" },
+        referenceDate,
       ),
     "VALIDATION_ERROR",
   );
 });
 
-test("rejects a project that starts after recruitment ends", () => {
+test("rejects yesterday as recruitment deadline", () => {
   assertAppError(
     () =>
       validateProjectDates(
-        { startDate: "2026-07-20", endDate: "2026-07-19" },
-        new Date("2026-07-14T00:00:00.000Z"),
+        { startDate: "", endDate: "", recruitmentDeadline: "2026-07-13" },
+        referenceDate,
       ),
     "VALIDATION_ERROR",
+  );
+});
+
+test("allows today as recruitment deadline", () => {
+  assert.doesNotThrow(() =>
+    validateProjectDates(
+      { startDate: "", endDate: "", recruitmentDeadline: "2026-07-14" },
+      referenceDate,
+    ),
+  );
+});
+
+test("allows a future recruitment deadline", () => {
+  assert.doesNotThrow(() =>
+    validateProjectDates(
+      { startDate: "", endDate: "", recruitmentDeadline: "2026-08-01" },
+      referenceDate,
+    ),
+  );
+});
+
+test("rejects an invalid recruitment deadline format", () => {
+  assertAppError(
+    () =>
+      validateProjectDates(
+        { startDate: "", endDate: "", recruitmentDeadline: "07/14/2026" },
+        referenceDate,
+      ),
+    "VALIDATION_ERROR",
+  );
+});
+
+test("when both schedule dates are present, requires startDate <= endDate", () => {
+  assertAppError(
+    () =>
+      validateProjectDates(
+        {
+          startDate: "2026-08-01",
+          endDate: "2026-07-20",
+          recruitmentDeadline: "2026-07-14",
+        },
+        referenceDate,
+      ),
+    "VALIDATION_ERROR",
+  );
+
+  assert.doesNotThrow(() =>
+    validateProjectDates(
+      {
+        startDate: "2026-07-20",
+        endDate: "2026-08-01",
+        recruitmentDeadline: "2026-07-14",
+      },
+      referenceDate,
+    ),
+  );
+});
+
+test("does not compare project start date to recruitment deadline", () => {
+  assert.doesNotThrow(() =>
+    validateProjectDates(
+      {
+        startDate: "2026-08-01",
+        endDate: "",
+        recruitmentDeadline: "2026-07-14",
+      },
+      referenceDate,
+    ),
   );
 });
 
@@ -41,7 +111,7 @@ test("allows participation only while recruiting before the deadline", () => {
   assert.doesNotThrow(() =>
     assertProjectAcceptingNewParticipants(
       { recruitment_status: "RECRUITING", end_date: "2026-07-14" },
-      new Date("2026-07-14T00:00:00.000Z"),
+      referenceDate,
     ),
   );
 
@@ -49,7 +119,7 @@ test("allows participation only while recruiting before the deadline", () => {
     () =>
       assertProjectAcceptingNewParticipants(
         { recruitment_status: "RECRUITING", end_date: "2026-07-13" },
-        new Date("2026-07-14T00:00:00.000Z"),
+        referenceDate,
       ),
     "INVALID_STATE_TRANSITION",
   );

@@ -13,6 +13,7 @@ export type ProjectFormValues = {
   expectedMemberCount: number | null;
   startDate: string;
   endDate: string;
+  recruitmentDeadline: string;
   coverImageName: string;
 };
 
@@ -91,6 +92,11 @@ export function normalizeProjectPayload(body: unknown): ProjectFormValues {
   const payload = (body ?? {}) as Record<string, unknown>;
   const recruitmentStatus =
     payload.recruitmentStatus === "CLOSED" ? "CLOSED" : "RECRUITING";
+  const startDate = String(payload.startDate ?? "").trim();
+  const endDate = String(payload.endDate ?? "").trim();
+  const rawRecruitmentDeadline = String(payload.recruitmentDeadline ?? "").trim();
+  // LEGACY: if recruitmentDeadline missing/blank, use non-empty endDate as deadline temporarily
+  const recruitmentDeadline = rawRecruitmentDeadline || endDate;
 
   return {
     title: String(payload.title ?? "").trim(),
@@ -103,8 +109,9 @@ export function normalizeProjectPayload(body: unknown): ProjectFormValues {
     requiredRoles: toStringArray(payload.requiredRoles),
     tools: toStringArray(payload.tools),
     expectedMemberCount: normalizeExpectedMemberCount(payload.expectedMemberCount),
-    startDate: String(payload.startDate ?? "").trim(),
-    endDate: String(payload.endDate ?? "").trim(),
+    startDate,
+    endDate,
+    recruitmentDeadline,
     coverImageName: String(payload.coverImageName ?? "").trim().slice(0, 255),
   };
 }
