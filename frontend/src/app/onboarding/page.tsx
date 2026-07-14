@@ -282,11 +282,10 @@ export default function OnboardingPage() {
 
   return (
     <main className="min-h-screen bg-[#f6f8fb] pb-16 text-slate-950">
-      <section className="mx-auto w-[min(760px,calc(100%-32px))] py-10 lg:py-14">
-        <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Onboarding</p>
+      <section className="mx-auto w-full max-w-[760px] px-4 py-10 lg:py-14">
         <h1 className="mt-2 text-3xl font-black tracking-[0] sm:text-4xl">프로필을 단계별로 작성해요</h1>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          5단계를 모두 마치면 자동으로 추천 프로젝트 페이지로 이동합니다.
+          기본 정보를 입력하고, 나에게 맞는 프로젝트를 찾아보세요.
         </p>
 
         {loadingSession || (sessionEmail && loadingProfile) ? (
@@ -300,7 +299,7 @@ export default function OnboardingPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
               온보딩 내용을 저장하려면 먼저 로그인 또는 회원가입이 필요합니다.
             </div>
-            <AuthPanel />
+            <AuthPanel onboardingOnly />
           </div>
         ) : null}
 
@@ -313,10 +312,9 @@ export default function OnboardingPage() {
         {!loadingSession && !loadingProfile && sessionEmail ? (
         <div className="mt-8 rounded-lg border border-slate-200 bg-white shadow-[0_18px_50px_rgba(23,32,42,0.08)]">
           <div className="flex items-start justify-between gap-5 border-b border-slate-200 p-5">
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Onboarding</p>
-              <h2 className="mt-2 text-2xl font-black tracking-[0]">{stepTitles[step]}</h2>
-              <p className="mt-1 text-sm leading-6 text-slate-500">{stepDescriptions[step]}</p>
+            <div className="min-w-0">
+              <h2 className="mt-2 break-words text-2xl font-black tracking-[0]">{stepTitles[step]}</h2>
+              <p className="mt-1 break-words text-sm leading-6 text-slate-500">{stepDescriptions[step]}</p>
             </div>
             <div className="grid size-14 shrink-0 place-items-center rounded-lg bg-teal-50 text-sm font-black text-teal-700">
               {step + 1}/5
@@ -326,8 +324,8 @@ export default function OnboardingPage() {
             <div className="h-full bg-teal-700 transition-all" style={{ width: `${((step + 1) / 5) * 100}%` }} />
           </div>
 
-          <div className="border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-500">
-            현재 로그인 계정: <span className="text-slate-900">{sessionEmail}</span>
+          <div className="break-all border-b border-slate-100 px-5 py-3 text-sm font-bold text-slate-500">
+            로그인 계정: <span className="text-slate-900">{sessionEmail}</span>
           </div>
 
           <form className="p-5" onSubmit={(event) => event.preventDefault()}>
@@ -424,9 +422,6 @@ export default function OnboardingPage() {
 
             {step === 2 && (
               <div className="grid gap-4">
-                <p className="text-sm leading-6 text-slate-500">
-                  MVP에서는 파일 업로드 대신 외부 포트폴리오 링크만 등록합니다.
-                </p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-2 text-sm font-extrabold text-slate-700 sm:col-span-2">
                     외부 포트폴리오 링크
@@ -512,9 +507,9 @@ export default function OnboardingPage() {
             {step === 4 && (
               <div className="grid gap-4">
                 <div className="border-l-4 border-teal-700 bg-teal-50 px-4 py-4">
-                  <h3 className="font-black text-teal-950">추천 결과 준비 완료</h3>
+                  <h3 className="font-black text-teal-950">작성 내용 확인</h3>
                   <p className="mt-2 text-sm leading-6 text-teal-900">
-                    역할, 프로젝트 상태, 작업물 검증 기준으로 대명캠 아트 인력과 성서캠 개발팀을 연결합니다.
+                    입력한 정보를 바탕으로 함께할 프로젝트를 찾아볼 수 있어요.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

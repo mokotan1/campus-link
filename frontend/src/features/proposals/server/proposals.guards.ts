@@ -25,6 +25,12 @@ export function assertDistinctProposalUsers(
   }
 }
 
+export function assertProposalMessage(message: string) {
+  if (!message.trim()) {
+    throw new AppError("VALIDATION_ERROR", "제안 메시지는 필수입니다.");
+  }
+}
+
 export function assertNoDuplicateProposal(existing: { id: number } | null) {
   if (existing) {
     throw new AppError("DUPLICATE_RESOURCE", "이미 이 사용자에게 제안을 보냈습니다.");

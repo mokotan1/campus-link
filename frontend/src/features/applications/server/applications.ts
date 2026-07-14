@@ -20,6 +20,7 @@ import {
   applicationRepository,
   type MatchedContactDetails,
 } from "./applications.repository";
+import type { ReceivedApplicationRecord } from "./applications.received";
 
 export type ApplicationFormValues = {
   projectId: number | null;
@@ -30,6 +31,7 @@ export type ApplicationFormValues = {
 export type MyApplicationRecord = {
   id: number;
   projectId: number;
+  direction: "sent" | "received";
   message: string;
   status: string;
   targetRole: string;
@@ -167,7 +169,7 @@ export async function getMatchedContactDetails(
   }
 
   if (otherUserId === currentUser.id) {
-    throw new AppError("VALIDATION_ERROR", "본인 연락처는 이 API로 조회할 수 없습니다.");
+    throw new AppError("VALIDATION_ERROR", "내 연락처는 여기서 확인할 수 없습니다.");
   }
 
   const contact = await applicationRepository.getMatchedContactDetails(otherUserId);
@@ -189,7 +191,24 @@ export async function listMyApplications() {
     return null;
   }
 
-  return applicationRepository.listByApplicant(currentUser.id);
+  const [sentApplications, receivedApplications] = await Promise.all([
+    applicationRepository.listByApplicant(currentUser.id),
+    applicationRepository.listByProjectOwner(currentUser.id),
+  ]);
+
+  return [...sentApplications, ...receivedApplications].sort(
+    (left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt),
+  );
+}
+
+export async function listReceivedApplications(): Promise<ReceivedApplicationRecord[] | null> {
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return applicationRepository.listReceivedByProjectOwner(currentUser.id);
 }
 
 export async function createApplicationForSession(values: ApplicationFormValues) {

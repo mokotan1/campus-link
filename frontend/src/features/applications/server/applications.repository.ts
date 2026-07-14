@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 
 import type { ApplicationDetailRow } from "./applications.guards";
 import type { MyApplicationRecord } from "./applications";
+import {
+  mapReceivedApplicationRows,
+  type ReceivedApplicationRecord,
+  type ReceivedApplicantProfileRow,
+  type ReceivedApplicantRow,
+  type ReceivedApplicationRow,
+  type ReceivedProjectRow,
+} from "./applications.received";
 
 type ApplicationListRow = Pick<
   Tables<"applications">,
@@ -27,6 +35,18 @@ type ProjectSummaryRow = Pick<
   recruitment_deadline: string | null;
 };
 
+type OwnedProjectRow = Pick<
+  Tables<"projects">,
+  "id" | "title" | "campus" | "recruitment_status"
+>;
+
+type ApplicantUserRow = Pick<Tables<"users">, "id" | "name" | "campus">;
+
+type ApplicantProfileRow = Pick<
+  Tables<"profiles">,
+  "user_id" | "display_name" | "department"
+>;
+
 const APPLICATION_SELECT =
   "id, project_id, applicant_user_id, message, application_status, target_role, created_at" as const;
 
@@ -36,12 +56,14 @@ const PROJECT_SUMMARY_SELECT =
 function mapApplicationRow(
   row: ApplicationListRow,
   projectMap: Map<number, ProjectSummaryRow>,
+  direction: MyApplicationRecord["direction"],
 ): MyApplicationRecord {
   const project = projectMap.get(row.project_id);
 
   return {
     id: row.id,
     projectId: row.project_id,
+    direction,
     message: row.message ?? "",
     status: row.application_status,
     targetRole: row.target_role ?? "",
@@ -76,6 +98,8 @@ export interface ApplicationRepository {
     targetRole: string,
   ): Promise<MyApplicationRecord>;
   listByApplicant(applicantUserId: number): Promise<MyApplicationRecord[]>;
+  listByProjectOwner(ownerUserId: number): Promise<MyApplicationRecord[]>;
+  listReceivedByProjectOwner(ownerUserId: number): Promise<ReceivedApplicationRecord[]>;
   ownerDecide(
     applicationId: number,
     decision: "ACCEPTED" | "REJECTED",
@@ -186,7 +210,7 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error("프로젝트를 찾을 수 없습니다.");
     }
 
-    return mapApplicationRow(application, new Map([[project.id, project]]));
+    return mapApplicationRow(application, new Map([[project.id, project]]), "sent");
   },
 
   async listByApplicant(applicantUserId) {
@@ -224,7 +248,114 @@ export const applicationRepository: ApplicationRepository = {
     );
 
     return (applications ?? []).map((application) =>
-      mapApplicationRow(application, projectMap),
+      mapApplicationRow(application, projectMap, "sent"),
+    );
+  },
+
+  async listByProjectOwner(ownerUserId) {
+    const supabase = await createClient();
+    const { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select(PROJECT_SUMMARY_SELECT)
+      .eq("owner_user_id", ownerUserId);
+
+    if (projectsError) {
+      throw new Error(projectsError.message);
+    }
+
+    const ownedProjects = (projects ?? []) as unknown as ProjectSummaryRow[];
+    const projectIds = ownedProjects.map((project) => project.id);
+
+    if (projectIds.length === 0) {
+      return [];
+    }
+
+    const { data: applications, error: applicationsError } = await supabase
+      .from("applications")
+      .select(APPLICATION_SELECT)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+
+    if (applicationsError) {
+      throw new Error(applicationsError.message);
+    }
+
+    const projectMap = new Map(ownedProjects.map((project) => [project.id, project]));
+
+    return (applications ?? []).map((application) =>
+      mapApplicationRow(application, projectMap, "received"),
+    );
+  },
+
+  async listReceivedByProjectOwner(ownerUserId) {
+    const supabase = await createClient();
+    const { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select("id, title, campus, recruitment_status")
+      .eq("owner_user_id", ownerUserId);
+
+    if (projectsError) {
+      throw new Error(projectsError.message);
+    }
+
+    const ownedProjects = (projects ?? []) as OwnedProjectRow[];
+    const projectIds = ownedProjects.map((project) => project.id);
+
+    if (projectIds.length === 0) {
+      return [];
+    }
+
+    const { data: applications, error: applicationsError } = await supabase
+      .from("applications")
+      .select(APPLICATION_SELECT)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+
+    if (applicationsError) {
+      throw new Error(applicationsError.message);
+    }
+
+    const applicationRows = (applications ?? []) as ReceivedApplicationRow[];
+    const applicantIds = [
+      ...new Set(applicationRows.map((application) => application.applicant_user_id)),
+    ];
+
+    if (applicantIds.length === 0) {
+      return [];
+    }
+
+    const [{ data: applicants, error: applicantsError }, { data: profiles, error: profilesError }] =
+      await Promise.all([
+        supabase.from("users").select("id, name, campus").in("id", applicantIds),
+        supabase
+          .from("profiles")
+          .select("user_id, display_name, department")
+          .in("user_id", applicantIds),
+      ]);
+
+    if (applicantsError) {
+      throw new Error(applicantsError.message);
+    }
+
+    if (profilesError) {
+      throw new Error(profilesError.message);
+    }
+
+    return mapReceivedApplicationRows(
+      applicationRows,
+      new Map(ownedProjects.map((project) => [project.id, project as ReceivedProjectRow])),
+      new Map(
+        ((applicants ?? []) as ApplicantUserRow[]).map((applicant) => [
+          applicant.id,
+          applicant as ReceivedApplicantRow,
+        ]),
+      ),
+      new Map(
+        ((profiles ?? []) as ApplicantProfileRow[]).map((profile) => [
+          profile.user_id,
+          profile as ReceivedApplicantProfileRow,
+        ]),
+      ),
     );
   },
 

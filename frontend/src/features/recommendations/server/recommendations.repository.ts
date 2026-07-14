@@ -44,18 +44,21 @@ type ProfileRow = Pick<
   | "role_tags"
   | "tech_stack"
   | "availability_status"
+  | "collaboration_status"
+  | "onboarding_completed"
   | "created_at"
 >;
 
 type UserCampusRow = Pick<Tables<"users">, "id" | "campus">;
 
 type PortfolioVisibilityRow = Pick<Tables<"portfolio_items">, "user_id" | "external_url">;
+type ProposalReceiverRow = Pick<Tables<"proposals">, "receiver_user_id">;
 
 const PROJECT_SELECT =
   "id, owner_user_id, title, summary, campus, required_roles, tools, recruitment_status, recruitment_deadline, created_at" as const;
 
 const PROFILE_SELECT =
-  "user_id, display_name, role_tags, tech_stack, availability_status, created_at" as const;
+  "user_id, display_name, role_tags, tech_stack, availability_status, collaboration_status, onboarding_completed, created_at" as const;
 
 function mapProjectRow(row: ProjectRow): ProjectRecommendationCandidate {
   return {
@@ -76,6 +79,7 @@ function mapProfileRow(
   row: ProfileRow,
   campusByUserId: Map<number, string | null>,
   publicPortfolioUserIds: Set<number>,
+  proposedUserIds: Set<number>,
 ): ProfileRecommendationCandidate {
   return {
     userId: row.user_id,
@@ -86,6 +90,9 @@ function mapProfileRow(
     availabilityStatus: row.availability_status,
     hasPublicPortfolio: publicPortfolioUserIds.has(row.user_id),
     profileCreatedAt: row.created_at,
+    onboardingCompleted: row.onboarding_completed,
+    collaborationStatus: row.collaboration_status,
+    alreadyProposed: proposedUserIds.has(row.user_id),
   };
 }
 
@@ -173,6 +180,7 @@ export const recommendationRepository: RecommendationRepository = {
       { data: profiles, error: profilesError },
       { data: users, error: usersError },
       { data: portfolios, error: portfoliosError },
+      { data: proposals, error: proposalsError },
     ] = await Promise.all([
       supabase.from("profiles").select(PROFILE_SELECT).neq("user_id", ownerUserId),
       supabase.from("users").select("id, campus").neq("id", ownerUserId),
@@ -180,6 +188,7 @@ export const recommendationRepository: RecommendationRepository = {
         .from("portfolio_items")
         .select("user_id, external_url")
         .not("external_url", "is", null),
+      supabase.from("proposals").select("receiver_user_id").eq("project_id", projectId),
     ]);
 
     if (profilesError) {
@@ -194,6 +203,10 @@ export const recommendationRepository: RecommendationRepository = {
       throw new Error(portfoliosError.message);
     }
 
+    if (proposalsError) {
+      throw new Error(proposalsError.message);
+    }
+
     const campusByUserId = new Map(
       ((users ?? []) as UserCampusRow[]).map((row) => [row.id, row.campus]),
     );
@@ -202,6 +215,9 @@ export const recommendationRepository: RecommendationRepository = {
       ((portfolios ?? []) as PortfolioVisibilityRow[])
         .filter((item) => Boolean(item.external_url?.trim()))
         .map((item) => item.user_id),
+    );
+    const proposedUserIds = new Set(
+      ((proposals ?? []) as ProposalReceiverRow[]).map((proposal) => proposal.receiver_user_id),
     );
 
     return {
@@ -213,7 +229,7 @@ export const recommendationRepository: RecommendationRepository = {
         tools: projectRow.tools ?? [],
       } satisfies ProjectRecommendationContext,
       profiles: (profiles ?? []).map((row) =>
-        mapProfileRow(row, campusByUserId, publicPortfolioUserIds),
+        mapProfileRow(row, campusByUserId, publicPortfolioUserIds, proposedUserIds),
       ),
     };
   },

@@ -14,6 +14,7 @@ import {
   assertDistinctProposalUsers,
   assertNoDuplicateProposal,
   assertPendingProposalStatus,
+  assertProposalMessage,
   assertProjectOwnerForProposal,
   assertProposalReceiverExists,
   assertReceiverForProposalDecision,
@@ -46,6 +47,8 @@ export function validateProposalPayload(values: ProposalFormValues) {
   if (!values.receiverUserId || values.receiverUserId <= 0) {
     throw new AppError("VALIDATION_ERROR", "올바른 수신자 ID가 필요합니다.");
   }
+
+  assertProposalMessage(values.message);
 }
 
 export async function createProposal(

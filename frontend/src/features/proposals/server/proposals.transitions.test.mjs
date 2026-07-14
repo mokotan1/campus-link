@@ -13,6 +13,7 @@ import {
   assertProjectOwnerForProposal,
   assertProposalReceiverExists,
   assertReceiverForProposalDecision,
+  assertProposalMessage,
 } from "./proposals.guards.ts";
 
 /** Injected calendar day — never read the machine clock. */
@@ -166,5 +167,12 @@ test("only proposal receiver accepts or rejects proposal", () => {
   assertAppError(
     () => assertReceiverForProposalDecision(owner, receiver.id),
     "FORBIDDEN",
+  );
+});
+
+test("requires a message when creating a proposal", () => {
+  assertAppError(
+    () => assertProposalMessage(""),
+    "VALIDATION_ERROR",
   );
 });

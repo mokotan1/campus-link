@@ -3,6 +3,7 @@ import "server-only";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 import { AppError } from "@/lib/api/error";
 
+import { validateProjectDates } from "./projects.guards";
 import { listMyProjectsForUser } from "./projects.mapper";
 import { projectRepository } from "./projects.repository";
 
@@ -107,6 +108,8 @@ export function validateProjectPayload(values: ProjectFormValues) {
   if (!values.collaborationMode) {
     throw new AppError("VALIDATION_ERROR", "협업 방식은 필수입니다.");
   }
+
+  validateProjectDates(values);
 }
 
 export async function listProjects(filters: ProjectListFilters) {

@@ -67,6 +67,9 @@ export type ProfileRecommendationCandidate = {
   availabilityStatus: string | null;
   hasPublicPortfolio: boolean;
   profileCreatedAt: string;
+  onboardingCompleted?: boolean;
+  collaborationStatus?: string;
+  alreadyProposed?: boolean;
 };
 
 export type ProjectRecommendationContext = {
@@ -342,7 +345,13 @@ export function rankProfiles(
   void options;
 
   return profiles
-    .filter((profile) => profile.userId !== project.ownerUserId)
+    .filter(
+      (profile) =>
+        profile.userId !== project.ownerUserId &&
+        profile.onboardingCompleted !== false &&
+        profile.collaborationStatus !== "CLOSED" &&
+        !profile.alreadyProposed,
+    )
     .map((profile) => {
       const breakdown: RecommendationScoreBreakdown = {
         role: scoreRoleMatch(profile.roleTags, project.requiredRoles),
