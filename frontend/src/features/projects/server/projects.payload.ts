@@ -17,7 +17,7 @@ export type ProjectFormValues = {
   coverImageName: string;
 };
 
-const EXPECTED_MEMBER_COUNT_MESSAGE =
+export const EXPECTED_MEMBER_COUNT_MESSAGE =
   "예상 모집 인원은 비우거나 1 이상의 정수여야 합니다.";
 
 function toStringArray(value: unknown) {

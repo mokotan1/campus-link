@@ -1,5 +1,6 @@
 import "server-only";
 
+import { AppError } from "@/lib/api/error";
 import { createClient } from "@/lib/supabase/server";
 
 import type { ProjectFormValues, ProjectListFilters, ProjectRecord } from "./projects";
@@ -9,6 +10,15 @@ import {
   type ProjectListRow,
   type SelfUserRow,
 } from "./projects.mapper";
+import { EXPECTED_MEMBER_COUNT_MESSAGE } from "./projects.payload";
+
+function throwProjectWriteError(error: { message: string }): never {
+  if (error.message.includes("projects_expected_member_count_positive_check")) {
+    throw new AppError("VALIDATION_ERROR", EXPECTED_MEMBER_COUNT_MESSAGE);
+  }
+
+  throw new Error(error.message);
+}
 
 const PROJECT_SELECT =
   "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, project_status, campus, required_roles, tools, expected_member_count, start_date, end_date, recruitment_deadline, created_at, cover_image_name" as const;
@@ -194,7 +204,7 @@ export const projectRepository: ProjectRepository = {
       .single();
 
     if (error) {
-      throw new Error(error.message);
+      throwProjectWriteError(error);
     }
 
     const row = asProjectListRow(project);
@@ -245,7 +255,7 @@ export const projectRepository: ProjectRepository = {
       .single();
 
     if (error) {
-      throw new Error(error.message);
+      throwProjectWriteError(error);
     }
 
     const row = asProjectListRow(project);
