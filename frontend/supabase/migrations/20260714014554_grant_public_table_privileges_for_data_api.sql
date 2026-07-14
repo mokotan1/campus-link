@@ -18,7 +18,7 @@ grant select, insert, update, delete on
 grant usage, select on all sequences in schema public
   to authenticated, service_role;
 
--- Future tables created by postgres: authenticate/service_role only
+-- Future tables created by postgres: authenticated/service_role only
 alter default privileges for role postgres in schema public
   grant select, insert, update, delete on tables
   to authenticated, service_role;
