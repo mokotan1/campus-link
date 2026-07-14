@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { MatchingEligibility } from "@/features/matching/server/recruitment-eligibility";
-import type { Tables } from "@/lib/supabase/database.types";
+import type { Database, Tables } from "@/lib/supabase/database.types";
 import { throwAppErrorFromRpc } from "@/lib/supabase/rpc-error";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,31 +17,18 @@ type ProposalRow = Pick<
   | "updated_at"
 >;
 
-/** Local until generated database.types includes recruitment_deadline. */
 type ProjectSummaryRow = Pick<
   Tables<"projects">,
-  "id" | "owner_user_id" | "title" | "campus" | "recruitment_status"
-> & {
-  recruitment_deadline: string | null;
-};
+  | "id"
+  | "owner_user_id"
+  | "title"
+  | "campus"
+  | "recruitment_status"
+  | "recruitment_deadline"
+>;
 
-/** Local until generated database.types includes get_matching_eligibility. */
-type MatchingEligibilityRpcRow = {
-  user_id: number;
-  email_verified: boolean;
-  onboarding_completed: boolean;
-  collaboration_status: string;
-};
-
-type UntypedRpcClient = {
-  rpc(
-    fn: "get_matching_eligibility",
-    args: { p_user_id: number },
-  ): PromiseLike<{
-    data: MatchingEligibilityRpcRow[] | MatchingEligibilityRpcRow | null;
-    error: { message: string } | null;
-  }>;
-};
+type MatchingEligibilityRpcRow =
+  Database["public"]["Functions"]["get_matching_eligibility"]["Returns"][number];
 
 const PROPOSAL_SELECT =
   "id, project_id, sender_user_id, receiver_user_id, message, proposal_status, created_at, updated_at" as const;
@@ -165,10 +152,9 @@ export const proposalRepository: ProposalRepository = {
 
   async findMatchingEligibility(userId) {
     const supabase = await createClient();
-    const { data, error } = await (supabase as unknown as UntypedRpcClient).rpc(
-      "get_matching_eligibility",
-      { p_user_id: userId },
-    );
+    const { data, error } = await supabase.rpc("get_matching_eligibility", {
+      p_user_id: userId,
+    });
 
     if (error) {
       throw new Error(error.message);

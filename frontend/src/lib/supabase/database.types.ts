@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -55,62 +55,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      // Task 6: manually extended until cloud schema regeneration catches up.
-      proposals: {
-        Row: {
-          created_at: string
-          id: number
-          message: string | null
-          project_id: number
-          proposal_status: string
-          receiver_user_id: number
-          sender_user_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          message?: string | null
-          project_id: number
-          proposal_status?: string
-          receiver_user_id: number
-          sender_user_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          message?: string | null
-          project_id?: number
-          proposal_status?: string
-          receiver_user_id?: number
-          sender_user_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "proposals_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_receiver_user_id_fkey"
-            columns: ["receiver_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "proposals_sender_user_id_fkey"
-            columns: ["sender_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -235,7 +179,9 @@ export type Database = {
           expected_member_count: number | null
           id: number
           owner_user_id: number
+          project_status: string
           project_type: string
+          recruitment_deadline: string | null
           recruitment_status: string
           required_roles: string[]
           start_date: string | null
@@ -253,7 +199,9 @@ export type Database = {
           expected_member_count?: number | null
           id?: number
           owner_user_id: number
+          project_status?: string
           project_type: string
+          recruitment_deadline?: string | null
           recruitment_status?: string
           required_roles?: string[]
           start_date?: string | null
@@ -271,7 +219,9 @@ export type Database = {
           expected_member_count?: number | null
           id?: number
           owner_user_id?: number
+          project_status?: string
           project_type?: string
+          recruitment_deadline?: string | null
           recruitment_status?: string
           required_roles?: string[]
           start_date?: string | null
@@ -283,6 +233,61 @@ export type Database = {
           {
             foreignKeyName: "projects_owner_user_id_fkey"
             columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          proposal_status: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          message?: string | null
+          project_id: number
+          proposal_status?: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          message?: string | null
+          project_id?: number
+          proposal_status?: string
+          receiver_user_id?: number
+          sender_user_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_receiver_user_id_fkey"
+            columns: ["receiver_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_sender_user_id_fkey"
+            columns: ["sender_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -335,29 +340,97 @@ export type Database = {
     Functions: {
       applicant_withdraw_application: {
         Args: { p_application_id: number }
-        Returns: Database["public"]["Tables"]["applications"]["Row"]
+        Returns: {
+          applicant_user_id: number
+          application_status: string
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          target_role: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
+      current_app_user_id: { Args: never; Returns: number }
       get_matched_contact_details: {
         Args: { p_other_user_id: number }
         Returns: {
-          campus: string | null
+          campus: string
           department: string
           email: string
-          name: string | null
+          name: string
+          user_id: number
+        }[]
+      }
+      get_matching_eligibility: {
+        Args: { p_user_id: number }
+        Returns: {
+          collaboration_status: string
+          email_verified: boolean
+          onboarding_completed: boolean
           user_id: number
         }[]
       }
       owner_decide_application: {
         Args: { p_application_id: number; p_decision: string }
-        Returns: Database["public"]["Tables"]["applications"]["Row"]
+        Returns: {
+          applicant_user_id: number
+          application_status: string
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          target_role: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       receiver_decide_proposal: {
         Args: { p_decision: string; p_proposal_id: number }
-        Returns: Database["public"]["Tables"]["proposals"]["Row"]
+        Returns: {
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          proposal_status: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       sender_cancel_proposal: {
         Args: { p_proposal_id: number }
-        Returns: Database["public"]["Tables"]["proposals"]["Row"]
+        Returns: {
+          created_at: string
+          id: number
+          message: string | null
+          project_id: number
+          proposal_status: string
+          receiver_user_id: number
+          sender_user_id: number
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "proposals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

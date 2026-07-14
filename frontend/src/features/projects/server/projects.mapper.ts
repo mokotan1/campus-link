@@ -2,12 +2,6 @@ import type { Tables } from "@/lib/supabase/database.types";
 
 import type { ProjectRecord } from "./projects";
 
-/** Local until generated database.types includes the new columns. */
-export type ProjectStatusColumns = {
-  project_status: string;
-  recruitment_deadline: string | null;
-};
-
 export type ProjectListRow = Pick<
   Tables<"projects">,
   | "id"
@@ -18,6 +12,8 @@ export type ProjectListRow = Pick<
   | "project_type"
   | "collaboration_mode"
   | "recruitment_status"
+  | "project_status"
+  | "recruitment_deadline"
   | "campus"
   | "required_roles"
   | "tools"
@@ -26,8 +22,7 @@ export type ProjectListRow = Pick<
   | "end_date"
   | "created_at"
   | "cover_image_name"
-> &
-  ProjectStatusColumns;
+>;
 
 export type OwnerProfileRow = Pick<
   Tables<"profiles">,
