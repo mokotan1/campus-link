@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/shared/components/tag";
 import type { Application } from "@/shared/types";
+import { readApiResponse } from "@/shared/lib/api-client";
+import { mapApplicationStatus } from "@/shared/lib/ui-mappers";
 
 type Direction = "sent" | "received";
 
@@ -12,14 +14,51 @@ type ApplicationsScreenProps = {
   authenticated: boolean;
 };
 
+type ApplicationAction = "accept" | "reject" | "withdraw";
+
+type ApplicationActionResponse = {
+  application_status: string;
+};
+
 export function ApplicationsScreen({ initialApplications, authenticated }: ApplicationsScreenProps) {
-  const applications = initialApplications;
+  const [applications, setApplications] = useState(initialApplications);
   const [direction, setDirection] = useState<Direction>("sent");
+  const [processingApplicationId, setProcessingApplicationId] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const sent = useMemo(() => applications.filter((item) => item.direction === "sent"), [applications]);
   const received = useMemo(() => applications.filter((item) => item.direction === "received"), [applications]);
 
   const visible = direction === "sent" ? sent : received;
+
+  async function handleApplicationAction(application: Application, action: ApplicationAction) {
+    if (application.status !== "대기") {
+      return;
+    }
+
+    setProcessingApplicationId(application.id);
+    setActionError(null);
+
+    try {
+      const result = await readApiResponse<ApplicationActionResponse>(
+        await fetch(`/api/applications/${application.id}/${action}`, { method: "POST" }),
+      );
+
+      setApplications((current) =>
+        current.map((item) =>
+          item.id === application.id
+            ? { ...item, status: mapApplicationStatus(result.application_status) }
+            : item,
+        ),
+      );
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "지원 상태를 변경하지 못했습니다. 다시 시도해주세요.",
+      );
+    } finally {
+      setProcessingApplicationId(null);
+    }
+  }
 
   if (!authenticated) {
     return (
@@ -47,8 +86,8 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
           <span className="text-sm font-extrabold text-slate-500">{applications.length}건</span>
         </div>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          프로젝트에 지원하거나 인재에게 제안하면 &quot;내가 보낸 지원&quot;에 모이고, 다른 학생이 내 프로젝트에 지원하거나
-          제안을 보내면 &quot;내가 받은 제안&quot;에서 확인할 수 있어요.
+          프로젝트에 지원한 내역은 &quot;내가 보낸 지원&quot;에, 내 프로젝트에 들어온 지원은 &quot;내가 받은 지원&quot;에서
+          확인할 수 있어요.
         </p>
 
         <div className="mt-6 inline-flex rounded-lg border border-slate-200 bg-white p-1" role="tablist" aria-label="지원 현황 탭">
@@ -72,9 +111,15 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
             aria-selected={direction === "received"}
             onClick={() => setDirection("received")}
           >
-            내가 받은 제안 ({received.length})
+            내가 받은 지원 ({received.length})
           </button>
         </div>
+
+        {actionError && (
+          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            {actionError}
+          </p>
+        )}
 
         <div className="mt-6 grid gap-3">
           {visible.map((application) => (
@@ -95,13 +140,46 @@ export function ApplicationsScreen({ initialApplications, authenticated }: Appli
                   프로젝트 보기
                 </Link>
               )}
+              {application.status === "대기" && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {application.direction === "sent" ? (
+                    <button
+                      className="min-h-10 rounded-lg border border-rose-300 bg-white px-4 text-sm font-extrabold text-rose-700 transition hover:border-rose-500 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      type="button"
+                      disabled={processingApplicationId === application.id}
+                      onClick={() => void handleApplicationAction(application, "withdraw")}
+                    >
+                      {processingApplicationId === application.id ? "처리 중…" : "지원 취소"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="min-h-10 rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        type="button"
+                        disabled={processingApplicationId === application.id}
+                        onClick={() => void handleApplicationAction(application, "accept")}
+                      >
+                        {processingApplicationId === application.id ? "처리 중…" : "수락"}
+                      </button>
+                      <button
+                        className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        type="button"
+                        disabled={processingApplicationId === application.id}
+                        onClick={() => void handleApplicationAction(application, "reject")}
+                      >
+                        거절
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </article>
           ))}
 
           {visible.length === 0 && (
             <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
               <p className="text-sm font-bold text-slate-500">
-                {direction === "sent" ? "아직 지원하거나 제안한 내역이 없습니다." : "아직 받은 제안이 없습니다."}
+                {direction === "sent" ? "아직 지원한 내역이 없습니다." : "아직 받은 지원이 없습니다."}
               </p>
               <Link href="/projects" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-teal-700 px-4 text-sm font-extrabold text-white">
                 프로젝트 보러 가기

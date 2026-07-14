@@ -33,12 +33,14 @@ const PROJECT_SUMMARY_SELECT =
 function mapApplicationRow(
   row: ApplicationListRow,
   projectMap: Map<number, ProjectSummaryRow>,
+  direction: MyApplicationRecord["direction"],
 ): MyApplicationRecord {
   const project = projectMap.get(row.project_id);
 
   return {
     id: row.id,
     projectId: row.project_id,
+    direction,
     message: row.message ?? "",
     status: row.application_status,
     targetRole: row.target_role ?? "",
@@ -72,6 +74,7 @@ export interface ApplicationRepository {
     targetRole: string,
   ): Promise<MyApplicationRecord>;
   listByApplicant(applicantUserId: number): Promise<MyApplicationRecord[]>;
+  listByProjectOwner(ownerUserId: number): Promise<MyApplicationRecord[]>;
   ownerDecide(
     applicationId: number,
     decision: "ACCEPTED" | "REJECTED",
@@ -151,7 +154,7 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error("프로젝트를 찾을 수 없습니다.");
     }
 
-    return mapApplicationRow(application, new Map([[project.id, project]]));
+    return mapApplicationRow(application, new Map([[project.id, project]]), "sent");
   },
 
   async listByApplicant(applicantUserId) {
@@ -184,7 +187,41 @@ export const applicationRepository: ApplicationRepository = {
     const projectMap = new Map((projects ?? []).map((project) => [project.id, project]));
 
     return (applications ?? []).map((application) =>
-      mapApplicationRow(application, projectMap),
+      mapApplicationRow(application, projectMap, "sent"),
+    );
+  },
+
+  async listByProjectOwner(ownerUserId) {
+    const supabase = await createClient();
+    const { data: projects, error: projectsError } = await supabase
+      .from("projects")
+      .select(PROJECT_SUMMARY_SELECT)
+      .eq("owner_user_id", ownerUserId);
+
+    if (projectsError) {
+      throw new Error(projectsError.message);
+    }
+
+    const projectIds = (projects ?? []).map((project) => project.id);
+
+    if (projectIds.length === 0) {
+      return [];
+    }
+
+    const { data: applications, error: applicationsError } = await supabase
+      .from("applications")
+      .select(APPLICATION_SELECT)
+      .in("project_id", projectIds)
+      .order("created_at", { ascending: false });
+
+    if (applicationsError) {
+      throw new Error(applicationsError.message);
+    }
+
+    const projectMap = new Map((projects ?? []).map((project) => [project.id, project]));
+
+    return (applications ?? []).map((application) =>
+      mapApplicationRow(application, projectMap, "received"),
     );
   },
 
@@ -243,4 +280,4 @@ export const applicationRepository: ApplicationRepository = {
     };
   },
 };
-
+

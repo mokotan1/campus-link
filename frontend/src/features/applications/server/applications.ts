@@ -25,6 +25,7 @@ export type ApplicationFormValues = {
 export type MyApplicationRecord = {
   id: number;
   projectId: number;
+  direction: "sent" | "received";
   message: string;
   status: string;
   targetRole: string;
@@ -171,7 +172,14 @@ export async function listMyApplications() {
     return null;
   }
 
-  return applicationRepository.listByApplicant(currentUser.id);
+  const [sentApplications, receivedApplications] = await Promise.all([
+    applicationRepository.listByApplicant(currentUser.id),
+    applicationRepository.listByProjectOwner(currentUser.id),
+  ]);
+
+  return [...sentApplications, ...receivedApplications].sort(
+    (left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt),
+  );
 }
 
 export async function createApplicationForSession(values: ApplicationFormValues) {
@@ -206,4 +214,4 @@ export async function decideApplicationForSession(
 
   return decideApplication(currentUser, applicationId, decision);
 }
-
+
