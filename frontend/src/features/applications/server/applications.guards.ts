@@ -1,23 +1,35 @@
-import { AppError } from "../../../lib/api/error.ts";
+import { AppError, INTERNAL_ERROR_MESSAGE } from "../../../lib/api/error.ts";
 
 import type { CurrentAppUser } from "../../auth/server/current-app-user.mapper.ts";
+import {
+  assertRecruitmentOpen,
+  type RecruitmentGateProject,
+} from "../../matching/server/recruitment-eligibility.ts";
 
 type ProjectSummary = {
   owner_user_id: number;
-  recruitment_status: string;
+} & RecruitmentGateProject;
+
+export type ApplicationDetailRow = {
+  id: number;
+  project_id: number;
+  applicant_user_id: number;
+  message: string | null;
+  application_status: string;
+  target_role: string | null;
+  created_at: string;
 };
 
-export function assertCanApplyToProject(currentUser: CurrentAppUser, project: ProjectSummary) {
+export function assertCanApplyToProject(
+  currentUser: CurrentAppUser,
+  project: ProjectSummary,
+  today: string,
+) {
   if (project.owner_user_id === currentUser.id) {
     throw new AppError("FORBIDDEN", "자신의 프로젝트에는 지원할 수 없습니다.");
   }
 
-  if (project.recruitment_status !== "RECRUITING") {
-    throw new AppError(
-      "INVALID_STATE_TRANSITION",
-      "현재 모집 중인 프로젝트만 지원할 수 있습니다.",
-    );
-  }
+  assertRecruitmentOpen(project, today);
 }
 
 export function assertNoDuplicateApplication(existing: { id: number } | null) {
@@ -51,4 +63,22 @@ export function assertPendingApplicationStatus(status: string) {
       "대기 중인 지원만 처리할 수 있습니다.",
     );
   }
+}
+
+export function assertApplicationTransitionResult(
+  value: unknown,
+  applicationId: number,
+  expectedStatus: "ACCEPTED" | "REJECTED" | "CANCELED",
+): ApplicationDetailRow {
+  if (value == null || Array.isArray(value) || typeof value !== "object") {
+    throw new AppError("INTERNAL_ERROR", INTERNAL_ERROR_MESSAGE);
+  }
+
+  const row = value as Record<string, unknown>;
+
+  if (row.id !== applicationId || row.application_status !== expectedStatus) {
+    throw new AppError("INTERNAL_ERROR", INTERNAL_ERROR_MESSAGE);
+  }
+
+  return value as ApplicationDetailRow;
 }
