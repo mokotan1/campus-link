@@ -21,6 +21,11 @@ type AuthMessage = {
   text: string;
 };
 
+type AuthPanelProps = {
+  /** 온보딩에서는 계정 인증 후 단계형 프로필 입력을 사용한다. */
+  onboardingOnly?: boolean;
+};
+
 type ProfileFormState = {
   email: string;
   studentId: string;
@@ -69,7 +74,7 @@ function messageClassName(tone: AuthMessageTone) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
-export function AuthPanel() {
+export function AuthPanel({ onboardingOnly = false }: AuthPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
@@ -322,9 +327,13 @@ export function AuthPanel() {
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Auth</p>
-            <h2 className="mt-2 text-3xl font-black tracking-[0]">회원가입 / 로그인</h2>
+            <h2 className="mt-2 text-3xl font-black tracking-[0]">
+              {onboardingOnly ? "계정을 먼저 만들어요" : "회원가입 / 로그인"}
+            </h2>
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Supabase Auth 기준으로 계정을 만들고, 로그인 후 현재 사용자 프로필까지 바로 확인합니다.
+              {onboardingOnly
+                ? "이메일과 비밀번호를 입력하면 다음 단계에서 기본 정보와 사용 가능한 기술을 작성할 수 있어요."
+                : "Supabase Auth 기준으로 계정을 만들고, 로그인 후 현재 사용자 프로필까지 바로 확인합니다."}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
@@ -396,13 +405,15 @@ export function AuthPanel() {
               로그아웃
             </button>
 
-            <button
-              className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
-              type="button"
-              onClick={() => router.push(redirectTo)}
-            >
-              원래 화면으로 이동
-            </button>
+            {!onboardingOnly && (
+              <button
+                className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
+                type="button"
+                onClick={() => router.push(redirectTo)}
+              >
+                원래 화면으로 이동
+              </button>
+            )}
           </div>
         </form>
 
@@ -411,7 +422,8 @@ export function AuthPanel() {
         </div>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      {!onboardingOnly && (
+        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Profile</p>
@@ -510,6 +522,7 @@ export function AuthPanel() {
           {profileMessage.text}
         </div>
       </section>
+      )}
     </section>
   );
 }

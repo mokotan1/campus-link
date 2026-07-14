@@ -300,7 +300,7 @@ export default function OnboardingPage() {
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-bold text-amber-800">
               온보딩 내용을 저장하려면 먼저 로그인 또는 회원가입이 필요합니다.
             </div>
-            <AuthPanel />
+            <AuthPanel onboardingOnly />
           </div>
         ) : null}
 
