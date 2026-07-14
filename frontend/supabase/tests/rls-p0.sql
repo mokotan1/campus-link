@@ -80,25 +80,32 @@ BEGIN
     )
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.users (email, password_hash, name, role, auth_provider, auth_user_id)
+  INSERT INTO public.users (
+    email, password_hash, name, role, auth_provider, auth_user_id, email_verified
+  )
   VALUES
-    ('rls-owner@test.local', '', 'Owner', 'STUDENT', 'SUPABASE', owner_auth_id),
-    ('rls-other@test.local', '', 'Other', 'STUDENT', 'SUPABASE', other_auth_id),
-    ('rls-third@test.local', '', 'Third', 'STUDENT', 'SUPABASE', third_auth_id)
+    ('rls-owner@test.local', '', 'Owner', 'STUDENT', 'SUPABASE', owner_auth_id, true),
+    ('rls-other@test.local', '', 'Other', 'STUDENT', 'SUPABASE', other_auth_id, true),
+    ('rls-third@test.local', '', 'Third', 'STUDENT', 'SUPABASE', third_auth_id, false)
   ON CONFLICT (email) DO UPDATE
-    SET auth_user_id = EXCLUDED.auth_user_id;
+    SET auth_user_id = EXCLUDED.auth_user_id,
+        email_verified = EXCLUDED.email_verified;
 
   SELECT id INTO owner_user_id FROM public.users WHERE auth_user_id = owner_auth_id;
   SELECT id INTO other_user_id FROM public.users WHERE auth_user_id = other_auth_id;
   SELECT id INTO third_user_id FROM public.users WHERE auth_user_id = third_auth_id;
 
-  INSERT INTO public.profiles (user_id, display_name, bio, collaboration_status)
+  INSERT INTO public.profiles (
+    user_id, display_name, bio, collaboration_status, onboarding_completed
+  )
   VALUES
-    (owner_user_id, 'Owner Profile', 'owner bio', 'OPEN'),
-    (other_user_id, 'Other Profile', 'other bio', 'OPEN')
+    (owner_user_id, 'Owner Profile', 'owner bio', 'OPEN', true),
+    (other_user_id, 'Other Profile', 'other bio', 'OPEN', true)
   ON CONFLICT (user_id) DO UPDATE
     SET display_name = EXCLUDED.display_name,
-        bio = EXCLUDED.bio;
+        bio = EXCLUDED.bio,
+        collaboration_status = EXCLUDED.collaboration_status,
+        onboarding_completed = EXCLUDED.onboarding_completed;
 
   SELECT id INTO owner_profile_id FROM public.profiles WHERE user_id = owner_user_id;
   SELECT id INTO other_profile_id FROM public.profiles WHERE user_id = other_user_id;
@@ -316,6 +323,7 @@ DECLARE
   owner_portfolio_item_id bigint := current_setting('rls.owner_portfolio_item_id')::bigint;
   pending_application_id bigint;
   owner_portfolio_insert_id bigint;
+  eligibility_result text;
 BEGIN
   -- users: self SELECT keeps auth bootstrap working
   PERFORM pg_temp.rls_set_auth(owner_auth_id);
@@ -606,6 +614,72 @@ BEGIN
     ),
     1,
     'applicant can withdraw own pending application'
+  );
+
+  -- matching eligibility RPC: least-privilege contract
+  IF to_regprocedure('public.get_matching_eligibility(bigint)') IS NULL THEN
+    RAISE EXCEPTION
+      '[FAIL] get_matching_eligibility(bigint) is not defined';
+  END IF;
+  RAISE NOTICE '[PASS] get_matching_eligibility(bigint) is defined';
+
+  IF has_function_privilege(
+    'anon',
+    'public.get_matching_eligibility(bigint)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION
+      '[FAIL] anon must NOT execute get_matching_eligibility';
+  END IF;
+  RAISE NOTICE '[PASS] anon cannot execute get_matching_eligibility';
+
+  PERFORM pg_temp.rls_reset_role();
+  PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', '', true);
+  PERFORM pg_temp.rls_assert_rpc_blocked(
+    format(
+      'SELECT * FROM public.get_matching_eligibility(%s)',
+      other_user_id
+    ),
+    'unauthenticated invocation raises UNAUTHORIZED',
+    'UNAUTHORIZED'
+  );
+
+  PERFORM pg_temp.rls_set_auth(owner_auth_id);
+  PERFORM pg_temp.rls_assert_count(
+    format(
+      $sql$
+      SELECT 1 FROM public.get_matching_eligibility(%s)
+      WHERE user_id = %s
+        AND email_verified IS TRUE
+        AND onboarding_completed IS TRUE
+        AND collaboration_status = 'OPEN'
+      $sql$,
+      other_user_id,
+      other_user_id
+    ),
+    1,
+    'authenticated sender can query an existing receiver'
+  );
+
+  eligibility_result := pg_get_function_result(
+    'public.get_matching_eligibility(bigint)'::regprocedure
+  );
+
+  IF eligibility_result IS DISTINCT FROM
+    'TABLE(user_id bigint, email_verified boolean, onboarding_completed boolean, collaboration_status character varying)'
+  THEN
+    RAISE EXCEPTION
+      '[FAIL] get_matching_eligibility result shape: expected TABLE(user_id, email_verified, onboarding_completed, collaboration_status), got %',
+      eligibility_result;
+  END IF;
+  RAISE NOTICE
+    '[PASS] result exposes user_id, email_verified, onboarding_completed, collaboration_status only';
+
+  PERFORM pg_temp.rls_assert_count(
+    'SELECT 1 FROM public.get_matching_eligibility(9223372036854775807)',
+    0,
+    'missing receiver returns no row'
   );
 
   PERFORM pg_temp.rls_reset_role();
