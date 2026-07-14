@@ -21,6 +21,10 @@ type AuthMessage = {
   text: string;
 };
 
+type AuthPanelProps = {
+  onboardingOnly?: boolean;
+};
+
 type ProfileFormState = {
   email: string;
   studentId: string;
@@ -46,14 +50,14 @@ function emptyProfileState(): ProfileFormState {
 function initialAuthMessage(): AuthMessage {
   return {
     tone: "neutral",
-    text: "이 화면에서 회원가입과 로그인을 바로 테스트할 수 있습니다.",
+    text: "학교 이메일로 회원가입하거나 로그인해주세요.",
   };
 }
 
 function initialProfileMessage(): AuthMessage {
   return {
     tone: "neutral",
-    text: "로그인 후에는 현재 사용자 기준 프로필 조회와 저장이 가능합니다.",
+    text: "로그인 후 내 정보를 수정할 수 있어요.",
   };
 }
 
@@ -69,7 +73,7 @@ function messageClassName(tone: AuthMessageTone) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
-export function AuthPanel() {
+export function AuthPanel({ onboardingOnly = false }: AuthPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
@@ -98,7 +102,7 @@ export function AuthPanel() {
     });
     setProfileMessage({
       tone: "success",
-      text: "현재 사용자 프로필을 불러왔습니다.",
+      text: "내 정보를 불러왔습니다.",
     });
   }
 
@@ -205,7 +209,7 @@ export function AuthPanel() {
           await loadProfile();
           setMessage({
             tone: "success",
-            text: "회원가입과 기본 프로필 생성이 완료되었습니다.",
+            text: "회원가입이 완료되었습니다.",
           });
           router.push(redirectTo);
         } else {
@@ -231,7 +235,7 @@ export function AuthPanel() {
       await loadProfile();
       setMessage({
         tone: "success",
-        text: "로그인 성공. 온보딩과 프로젝트 화면으로 이동할 수 있습니다.",
+        text: "로그인되었습니다.",
       });
       router.push(redirectTo);
     } catch (error) {
@@ -321,14 +325,17 @@ export function AuthPanel() {
       <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">Auth</p>
-            <h2 className="mt-2 text-3xl font-black tracking-[0]">회원가입 / 로그인</h2>
+            <h2 className="mt-2 text-3xl font-black tracking-[0]">
+              {onboardingOnly ? "계정을 먼저 만들어요" : "회원가입 / 로그인"}
+            </h2>
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              Supabase Auth 기준으로 계정을 만들고, 로그인 후 현재 사용자 프로필까지 바로 확인합니다.
+              {onboardingOnly
+                ? "회원가입 후 기본 정보와 사용할 수 있는 기술을 입력해요."
+                : "학교 이메일로 계정을 만들거나 로그인해주세요."}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
-            현재 세션: {sessionEmail ?? "없음"}
+            로그인 계정: {sessionEmail ?? "없음"}
           </div>
         </div>
 
@@ -396,13 +403,15 @@ export function AuthPanel() {
               로그아웃
             </button>
 
-            <button
-              className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
-              type="button"
-              onClick={() => router.push(redirectTo)}
-            >
-              원래 화면으로 이동
-            </button>
+            {!onboardingOnly && (
+              <button
+                className="min-h-11 rounded-lg border border-slate-300 bg-white px-5 text-sm font-extrabold text-slate-950 transition hover:border-slate-400"
+                type="button"
+                onClick={() => router.push(redirectTo)}
+              >
+                돌아가기
+              </button>
+            )}
           </div>
         </form>
 
@@ -411,17 +420,14 @@ export function AuthPanel() {
         </div>
       </div>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      {!onboardingOnly && (
+        <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-blue-700">Profile</p>
-            <h3 className="mt-2 text-2xl font-black tracking-[0]">현재 사용자 프로필</h3>
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              로그인된 사용자 기준으로 `profiles` 테이블을 읽고 저장합니다.
-            </p>
+            <h3 className="text-2xl font-black tracking-[0]">내 정보</h3>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-600">
-            기준 이메일: {profile.email || "로그인 필요"}
+            이메일: {profile.email || "로그인 필요"}
           </div>
         </div>
 
@@ -473,7 +479,7 @@ export function AuthPanel() {
               value={profile.techStack}
               onChange={(event) => setProfile((current) => ({ ...current, techStack: event.target.value }))}
               disabled={!sessionEmail || profilePending}
-              placeholder="예: Next.js, Supabase, Spring Boot"
+              placeholder="예: Figma, Unity, Blender"
             />
           </label>
 
@@ -510,6 +516,7 @@ export function AuthPanel() {
           {profileMessage.text}
         </div>
       </section>
+      )}
     </section>
   );
 }

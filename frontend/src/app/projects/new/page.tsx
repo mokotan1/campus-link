@@ -62,10 +62,9 @@ export default function NewProjectPage() {
         <Link href="/projects" className="text-sm font-extrabold text-slate-500 hover:text-slate-950">
           ← 프로젝트 목록으로
         </Link>
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-blue-700">New Project</p>
         <h1 className="mt-2 text-3xl font-black tracking-[0] sm:text-4xl">프로젝트 등록</h1>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          블로그 글을 쓰듯 제목과 대표 이미지, 소개, 본문을 차례로 채워주세요. 캠퍼스와 역할 같은 정보는 오른쪽 옆 대신 아래에서 한 번에 정리합니다.
+          프로젝트 소개와 모집 정보를 입력해주세요.
         </p>
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>

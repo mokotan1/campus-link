@@ -30,19 +30,6 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="mt-7 grid max-w-2xl grid-cols-3 gap-3">
-            {[
-              ["2", "캠퍼스 기반 매칭"],
-              ["8", "역할 태그"],
-              ["5", "온보딩 단계"],
-            ].map(([value, label]) => (
-              <div className="rounded-lg border border-slate-200 bg-white/80 p-4" key={label}>
-                <strong className="block text-2xl font-black">{value}</strong>
-                <span className="mt-1 block text-xs font-bold leading-5 text-slate-500">{label}</span>
-              </div>
-            ))}
-          </div>
-
           <div className="mt-7 grid max-w-2xl gap-3 sm:grid-cols-2" aria-label="포트폴리오 미리보기">
             {[
               ["캐릭터 애니메이션 샘플", "대명캠 · 2D 애니메이션", "from-teal-50 via-blue-50 to-slate-100"],
@@ -63,13 +50,12 @@ export default function Home() {
         </div>
 
         <aside className="self-start rounded-lg border border-slate-200 bg-white p-6 shadow-[0_18px_50px_rgba(23,32,42,0.08)] lg:sticky lg:top-24" aria-label="이용 순서">
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-teal-700">How it works</p>
-          <h2 className="mt-2 text-2xl font-black tracking-[0]">한 화면이 아니라, 단계별로 진행돼요</h2>
+          <h2 className="text-2xl font-black tracking-[0]">이용 방법</h2>
           <ol className="mt-5 grid gap-4">
             {[
-              ["1", "온보딩", "캠퍼스·역할·포트폴리오를 5단계로 등록합니다.", "/onboarding"],
+              ["1", "온보딩", "캠퍼스와 역할, 포트폴리오를 등록합니다.", "/onboarding"],
               ["2", "프로젝트", "추천 프로젝트를 보고 등록하거나 지원합니다.", "/projects"],
-              ["3", "포트폴리오", "작업물을 블로그 쓰듯 정리해 올립니다.", "/projects"],
+              ["3", "포트폴리오", "작업물을 등록해 팀원에게 보여줍니다.", "/projects"],
               ["4", "지원 현황", "지원·제안 상태를 한곳에서 확인합니다.", "/applications"],
             ].map(([step, title, desc, href]) => (
               <li key={step}>

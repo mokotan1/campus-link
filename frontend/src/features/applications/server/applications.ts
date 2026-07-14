@@ -150,7 +150,7 @@ export async function getMatchedContactDetails(
   }
 
   if (otherUserId === currentUser.id) {
-    throw new AppError("VALIDATION_ERROR", "본인 연락처는 이 API로 조회할 수 없습니다.");
+    throw new AppError("VALIDATION_ERROR", "내 연락처는 여기서 확인할 수 없습니다.");
   }
 
   const contact = await applicationRepository.getMatchedContactDetails(otherUserId);
@@ -214,4 +214,3 @@ export async function decideApplicationForSession(
 
   return decideApplication(currentUser, applicationId, decision);
 }
-
