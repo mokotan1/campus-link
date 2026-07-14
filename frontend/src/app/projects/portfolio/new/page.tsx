@@ -22,6 +22,7 @@ export default function NewPortfolioPage() {
     title.trim().length === 0 && "제목",
     summary.trim().length === 0 && "한 줄 소개",
     content.trim().length === 0 && "본문",
+    link.trim().length === 0 && "외부 링크",
   ].filter((value): value is string => Boolean(value));
 
   const isValid = missingFields.length === 0;
@@ -55,7 +56,7 @@ export default function NewPortfolioPage() {
         <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-teal-700">New Portfolio</p>
         <h1 className="mt-2 text-3xl font-black tracking-[0] sm:text-4xl">포트폴리오 작성</h1>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          작업물을 블로그 글처럼 정리해보세요. 제목, 대표 이미지, 소개, 본문 순서로 작성하면 됩니다.
+          작업물을 블로그 글처럼 정리해보세요. 제목, 대표 이미지, 소개, 본문과 외부 링크를 함께 입력하면 됩니다.
         </p>
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>
@@ -125,6 +126,7 @@ export default function NewPortfolioPage() {
                   type="url"
                   value={link}
                   onChange={(event) => setLink(event.target.value)}
+                  required
                 />
               </label>
             </div>

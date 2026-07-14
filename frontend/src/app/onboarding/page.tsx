@@ -7,8 +7,11 @@ import { availabilityOptions, collaborationTypes, roles } from "@/shared/constan
 import { defaultOnboardingProfile } from "@/features/onboarding/lib/onboarding-state";
 import { bootstrapAppUserClient } from "@/features/auth/api/auth-api";
 import { AuthPanel } from "@/features/auth/components/auth-panel";
-import { getMyProfileClient, updateMyProfileClient } from "@/features/profile/api/profile-api";
-import type { ProfileRecord } from "@/features/profile/types";
+import {
+  getMyProfileClient,
+  updateMyProfileClient,
+} from "@/features/profile/api/profile-api";
+import type { ProfileFormValues, ProfileRecord } from "@/features/profile/types";
 import { listMyPortfoliosClient, savePortfolioClient } from "@/features/portfolios/api/portfolio-api";
 import { createClient } from "@/lib/supabase/client";
 import type { Campus } from "@/shared/types";
@@ -216,7 +219,13 @@ export default function OnboardingPage() {
     setSaveMessage("프로필 저장 중입니다.");
 
     try {
-      const existingProfile = await getMyProfileClient();
+      let existingProfile: ProfileRecord | null = null;
+
+      try {
+        existingProfile = await getMyProfileClient();
+      } catch {
+        existingProfile = null;
+      }
 
       const collaborationStatus =
         profile.availabilityStatus === "구경만" || profile.availabilityStatus === "팀 보유 중" ? "CLOSED" : "OPEN";
@@ -243,13 +252,13 @@ export default function OnboardingPage() {
         coverImageName: "",
       });
 
-      await updateMyProfileClient({
+      const profilePayload: ProfileFormValues = {
         displayName: profile.name,
         campus: profile.campus,
-        studentId: existingProfile.studentId,
+        studentId: existingProfile?.studentId ?? "",
         department: profile.department,
         grade: profile.grade,
-        bio: existingProfile.bio,
+        bio: existingProfile?.bio ?? "",
         roleTags: profile.roles,
         techStack: profile.tools,
         availabilityStatus: profile.availabilityStatus,
@@ -257,7 +266,9 @@ export default function OnboardingPage() {
         weeklyHours: profile.weeklyHours,
         collaborationStatus,
         onboardingCompleted: true,
-      });
+      };
+
+      await updateMyProfileClient(profilePayload);
 
       setProfile({ ...profile, completed: true });
       setSaveMessage("프로필 저장이 완료되었습니다. 프로젝트 화면으로 이동합니다.");

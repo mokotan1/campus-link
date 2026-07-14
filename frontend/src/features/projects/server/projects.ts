@@ -133,3 +133,29 @@ export async function createProject(values: ProjectFormValues) {
 
   return projectRepository.create(currentUser.id, values);
 }
+
+export async function updateProject(projectId: number, values: ProjectFormValues) {
+  validateProjectPayload(values);
+
+  if (!Number.isInteger(projectId) || projectId <= 0) {
+    throw new AppError("VALIDATION_ERROR", "올바른 프로젝트 ID가 필요합니다.");
+  }
+
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const ownerUserId = await projectRepository.findOwnerUserId(projectId);
+
+  if (ownerUserId === null) {
+    throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
+  }
+
+  if (ownerUserId !== currentUser.id) {
+    throw new AppError("FORBIDDEN", "본인이 등록한 프로젝트만 수정할 권한이 있습니다.");
+  }
+
+  return projectRepository.update(projectId, currentUser.id, values);
+}

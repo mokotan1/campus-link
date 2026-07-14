@@ -114,6 +114,8 @@ export interface ProjectRepository {
   list(filters: ProjectListFilters, currentUserId: number | null): Promise<ProjectRecord[]>;
   findById(id: number, currentUserId: number | null): Promise<ProjectRecord | null>;
   create(ownerUserId: number, values: ProjectFormValues): Promise<ProjectRecord>;
+  findOwnerUserId(id: number): Promise<number | null>;
+  update(id: number, ownerUserId: number, values: ProjectFormValues): Promise<ProjectRecord>;
 }
 
 export const projectRepository: ProjectRepository = {
@@ -204,6 +206,54 @@ export const projectRepository: ProjectRepository = {
         end_date: values.endDate || null,
         cover_image_name: values.coverImageName || null,
       })
+      .select(PROJECT_SELECT)
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const { ownerProfiles, selfUser } = await loadOwnerContext([ownerUserId], ownerUserId);
+
+    return mapProjectRow(project, ownerProfiles, selfUser);
+  },
+
+  async findOwnerUserId(id) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("projects")
+      .select("owner_user_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data?.owner_user_id ?? null;
+  },
+
+  async update(id, ownerUserId, values) {
+    const supabase = await createClient();
+    const { data: project, error } = await supabase
+      .from("projects")
+      .update({
+        title: values.title,
+        summary: values.summary,
+        description: values.description || null,
+        project_type: values.projectType,
+        collaboration_mode: values.collaborationMode,
+        recruitment_status: values.recruitmentStatus,
+        campus: values.campus || null,
+        required_roles: values.requiredRoles,
+        tools: values.tools,
+        expected_member_count: values.expectedMemberCount,
+        start_date: values.startDate || null,
+        end_date: values.endDate || null,
+        cover_image_name: values.coverImageName || null,
+      })
+      .eq("id", id)
+      .eq("owner_user_id", ownerUserId)
       .select(PROJECT_SELECT)
       .single();
 
