@@ -1,10 +1,12 @@
 import { AppError } from "../../../lib/api/error.ts";
+import { assertProjectAcceptingNewParticipants } from "../../projects/server/projects.guards.ts";
 
 import type { CurrentAppUser } from "../../auth/server/current-app-user.mapper.ts";
 
 type ProjectSummary = {
   owner_user_id: number;
   recruitment_status: string;
+  end_date: string | null;
 };
 
 export function assertCanApplyToProject(currentUser: CurrentAppUser, project: ProjectSummary) {
@@ -12,12 +14,7 @@ export function assertCanApplyToProject(currentUser: CurrentAppUser, project: Pr
     throw new AppError("FORBIDDEN", "자신의 프로젝트에는 지원할 수 없습니다.");
   }
 
-  if (project.recruitment_status !== "RECRUITING") {
-    throw new AppError(
-      "INVALID_STATE_TRANSITION",
-      "현재 모집 중인 프로젝트만 지원할 수 있습니다.",
-    );
-  }
+  assertProjectAcceptingNewParticipants(project);
 }
 
 export function assertNoDuplicateApplication(existing: { id: number } | null) {

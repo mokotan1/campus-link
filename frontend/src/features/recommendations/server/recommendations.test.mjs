@@ -39,7 +39,7 @@ const rankingProjects = [
     requiredRoles: ["Backend"],
     tools: ["React", "Python"],
     recruitmentStatus: "RECRUITING",
-    endDate: null,
+    endDate: "2026-08-01",
     createdAt: "2026-07-10T10:00:00.000Z",
   },
   {
@@ -51,7 +51,7 @@ const rankingProjects = [
     requiredRoles: ["Frontend"],
     tools: ["Vue"],
     recruitmentStatus: "RECRUITING",
-    endDate: null,
+    endDate: "2026-08-01",
     createdAt: "2026-07-08T10:00:00.000Z",
   },
 ];
@@ -90,6 +90,45 @@ test("excludes own projects and already-applied projects", () => {
   assert.deepEqual(
     ranked.map(({ id }) => id),
     [12, 3],
+  );
+});
+
+test("excludes closed and expired projects from recommendations", () => {
+  const ranked = rankProjects(
+    viewerProfile,
+    [
+      ...rankingProjects,
+      {
+        id: 51,
+        ownerUserId: 102,
+        title: "Expired",
+        summary: "Deadline has passed",
+        campus: "Seoul",
+        requiredRoles: ["Backend"],
+        tools: ["React"],
+        recruitmentStatus: "RECRUITING",
+        endDate: "2026-07-09",
+        createdAt: "2026-07-11T10:00:00.000Z",
+      },
+      {
+        id: 52,
+        ownerUserId: 103,
+        title: "Closed",
+        summary: "Recruiting closed",
+        campus: "Seoul",
+        requiredRoles: ["Backend"],
+        tools: ["React"],
+        recruitmentStatus: "CLOSED",
+        endDate: "2026-08-01",
+        createdAt: "2026-07-11T10:00:00.000Z",
+      },
+    ],
+    { referenceDate },
+  );
+
+  assert.deepEqual(
+    ranked.map(({ id }) => id),
+    [12, 7, 3],
   );
 });
 
@@ -187,4 +226,72 @@ test("excludes project owner from profile recommendations", () => {
   );
 
   assert.deepEqual(ranked.map(({ userId }) => userId), [40]);
+});
+
+test("excludes incomplete, unavailable, and already-proposed profiles", () => {
+  const ranked = rankProfiles(
+    {
+      id: 20,
+      ownerUserId: 1,
+      campus: "Seoul",
+      requiredRoles: ["Backend"],
+      tools: ["React"],
+    },
+    [
+      {
+        userId: 51,
+        displayName: "Ready",
+        campus: "Seoul",
+        roleTags: ["Backend"],
+        toolTags: ["React"],
+        availabilityStatus: "바로 가능",
+        hasPublicPortfolio: true,
+        profileCreatedAt: "2026-07-11T10:00:00.000Z",
+        onboardingCompleted: true,
+        collaborationStatus: "OPEN",
+        alreadyProposed: false,
+      },
+      {
+        userId: 52,
+        displayName: "Incomplete",
+        campus: "Seoul",
+        roleTags: ["Backend"],
+        toolTags: ["React"],
+        availabilityStatus: "바로 가능",
+        hasPublicPortfolio: true,
+        profileCreatedAt: "2026-07-11T10:00:00.000Z",
+        onboardingCompleted: false,
+        collaborationStatus: "OPEN",
+        alreadyProposed: false,
+      },
+      {
+        userId: 53,
+        displayName: "Unavailable",
+        campus: "Seoul",
+        roleTags: ["Backend"],
+        toolTags: ["React"],
+        availabilityStatus: "바로 가능",
+        hasPublicPortfolio: true,
+        profileCreatedAt: "2026-07-11T10:00:00.000Z",
+        onboardingCompleted: true,
+        collaborationStatus: "CLOSED",
+        alreadyProposed: false,
+      },
+      {
+        userId: 54,
+        displayName: "Already Proposed",
+        campus: "Seoul",
+        roleTags: ["Backend"],
+        toolTags: ["React"],
+        availabilityStatus: "바로 가능",
+        hasPublicPortfolio: true,
+        profileCreatedAt: "2026-07-11T10:00:00.000Z",
+        onboardingCompleted: true,
+        collaborationStatus: "OPEN",
+        alreadyProposed: true,
+      },
+    ],
+  );
+
+  assert.deepEqual(ranked.map(({ userId }) => userId), [51]);
 });

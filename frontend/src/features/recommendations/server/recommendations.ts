@@ -1,3 +1,5 @@
+import { isProjectAcceptingNewParticipants } from "../../projects/server/projects.guards.ts";
+
 export const PROJECT_SCORE_WEIGHTS = {
   role: 40,
   tool: 25,
@@ -65,6 +67,9 @@ export type ProfileRecommendationCandidate = {
   availabilityStatus: string | null;
   hasPublicPortfolio: boolean;
   profileCreatedAt: string;
+  onboardingCompleted?: boolean;
+  collaborationStatus?: string;
+  alreadyProposed?: boolean;
 };
 
 export type ProjectRecommendationContext = {
@@ -292,7 +297,15 @@ export function rankProjects(
   return projects
     .filter(
       (project) =>
-        project.ownerUserId !== viewer.userId && !appliedProjectIds.has(project.id),
+        project.ownerUserId !== viewer.userId &&
+        !appliedProjectIds.has(project.id) &&
+        isProjectAcceptingNewParticipants(
+          {
+            recruitment_status: project.recruitmentStatus,
+            end_date: project.endDate,
+          },
+          referenceDate,
+        ),
     )
     .map((project) => {
       const breakdown: RecommendationScoreBreakdown = {
@@ -328,7 +341,13 @@ export function rankProfiles(
   void options;
 
   return profiles
-    .filter((profile) => profile.userId !== project.ownerUserId)
+    .filter(
+      (profile) =>
+        profile.userId !== project.ownerUserId &&
+        profile.onboardingCompleted !== false &&
+        profile.collaborationStatus !== "CLOSED" &&
+        !profile.alreadyProposed,
+    )
     .map((profile) => {
       const breakdown: RecommendationScoreBreakdown = {
         role: scoreRoleMatch(profile.roleTags, project.requiredRoles),

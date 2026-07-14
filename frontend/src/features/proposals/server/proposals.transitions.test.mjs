@@ -7,6 +7,7 @@ import {
   assertNoDuplicateProposal,
   assertProjectOwnerForProposal,
   assertReceiverForProposalDecision,
+  assertProposalMessage,
 } from "./proposals.guards.ts";
 
 const owner = { id: 1, authUserId: "owner-auth", email: "owner@test.local" };
@@ -17,6 +18,7 @@ const recruitingProject = {
   title: "Campus App",
   campus: "Seoul",
   recruitment_status: "RECRUITING",
+  end_date: "2026-07-20",
 };
 
 function assertAppError(fn, code) {
@@ -36,6 +38,17 @@ test("only project owner can create a proposal", () => {
   );
 });
 
+test("cannot create a proposal after the recruitment deadline", () => {
+  assertAppError(
+    () =>
+      assertProjectOwnerForProposal(owner, {
+        ...recruitingProject,
+        end_date: "2026-07-01",
+      }),
+    "INVALID_STATE_TRANSITION",
+  );
+});
+
 test("duplicate proposal returns DUPLICATE_RESOURCE", () => {
   assertAppError(() => assertNoDuplicateProposal({ id: 55 }), "DUPLICATE_RESOURCE");
 });
@@ -51,4 +64,11 @@ test("only proposal receiver accepts or rejects proposal", () => {
 
 test("cannot send a proposal to yourself", () => {
   assertAppError(() => assertDistinctProposalUsers(owner, owner.id), "FORBIDDEN");
+});
+
+test("requires a message when creating a proposal", () => {
+  assertAppError(
+    () => assertProposalMessage(""),
+    "VALIDATION_ERROR",
+  );
 });

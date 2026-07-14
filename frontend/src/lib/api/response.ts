@@ -25,8 +25,6 @@ export function resolveApiError(error: unknown): {
     };
   }
 
-  console.error(error);
-
   return {
     status: 500,
     body: {

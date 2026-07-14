@@ -65,6 +65,9 @@ temp/
 # Local tool runtimes
 .tools/
 
+# Isolated local workspaces
+.worktrees/
+
 # Private AI agent files
 .agents/private/
 .agents/*.private.md
