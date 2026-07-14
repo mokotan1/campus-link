@@ -101,6 +101,7 @@ export interface ApplicationRepository {
   ): Promise<MyApplicationRecord>;
   listByApplicant(applicantUserId: number): Promise<MyApplicationRecord[]>;
   listByProjectOwner(ownerUserId: number): Promise<MyApplicationRecord[]>;
+  listReceivedByProjectOwner(ownerUserId: number): Promise<ReceivedApplicationRecord[]>;
   ownerDecide(
     applicationId: number,
     decision: "ACCEPTED" | "REJECTED",
