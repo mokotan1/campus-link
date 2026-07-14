@@ -31,9 +31,11 @@ type ProjectRow = Pick<
   | "required_roles"
   | "tools"
   | "recruitment_status"
-  | "end_date"
   | "created_at"
->;
+> & {
+  // Local until database.types.ts includes projects.recruitment_deadline.
+  recruitment_deadline: string | null;
+};
 
 type ProfileRow = Pick<
   Tables<"profiles">,
@@ -50,7 +52,7 @@ type UserCampusRow = Pick<Tables<"users">, "id" | "campus">;
 type PortfolioVisibilityRow = Pick<Tables<"portfolio_items">, "user_id" | "external_url">;
 
 const PROJECT_SELECT =
-  "id, owner_user_id, title, summary, campus, required_roles, tools, recruitment_status, end_date, created_at" as const;
+  "id, owner_user_id, title, summary, campus, required_roles, tools, recruitment_status, recruitment_deadline, created_at" as const;
 
 const PROFILE_SELECT =
   "user_id, display_name, role_tags, tech_stack, availability_status, created_at" as const;
@@ -65,7 +67,7 @@ function mapProjectRow(row: ProjectRow): ProjectRecommendationCandidate {
     requiredRoles: row.required_roles ?? [],
     tools: row.tools ?? [],
     recruitmentStatus: row.recruitment_status,
-    endDate: row.end_date,
+    recruitmentDeadline: row.recruitment_deadline,
     createdAt: row.created_at,
   };
 }
@@ -144,7 +146,7 @@ export const recommendationRepository: RecommendationRepository = {
 
     return {
       viewer,
-      projects: (projects ?? []).map(mapProjectRow),
+      projects: ((projects ?? []) as unknown as ProjectRow[]).map(mapProjectRow),
     };
   },
 
@@ -164,6 +166,8 @@ export const recommendationRepository: RecommendationRepository = {
     if (!project) {
       return null;
     }
+
+    const projectRow = project as unknown as ProjectRow;
 
     const [
       { data: profiles, error: profilesError },
@@ -202,11 +206,11 @@ export const recommendationRepository: RecommendationRepository = {
 
     return {
       project: {
-        id: project.id,
-        ownerUserId: project.owner_user_id,
-        campus: project.campus,
-        requiredRoles: project.required_roles ?? [],
-        tools: project.tools ?? [],
+        id: projectRow.id,
+        ownerUserId: projectRow.owner_user_id,
+        campus: projectRow.campus,
+        requiredRoles: projectRow.required_roles ?? [],
+        tools: projectRow.tools ?? [],
       } satisfies ProjectRecommendationContext,
       profiles: (profiles ?? []).map((row) =>
         mapProfileRow(row, campusByUserId, publicPortfolioUserIds),
