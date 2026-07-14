@@ -1,36 +1,19 @@
 import "server-only";
 
-import type { Tables } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 import type { ProjectFormValues, ProjectListFilters, ProjectRecord } from "./projects";
-
-type ProjectListRow = Pick<
-  Tables<"projects">,
-  | "id"
-  | "owner_user_id"
-  | "title"
-  | "summary"
-  | "description"
-  | "project_type"
-  | "collaboration_mode"
-  | "recruitment_status"
-  | "campus"
-  | "required_roles"
-  | "tools"
-  | "expected_member_count"
-  | "start_date"
-  | "end_date"
-  | "created_at"
-  | "cover_image_name"
->;
+import {
+  mapProjectRow,
+  type OwnerProfileRow,
+  type ProjectListRow,
+  type SelfUserRow,
+} from "./projects.mapper";
 
 const PROJECT_SELECT =
-  "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, campus, required_roles, tools, expected_member_count, start_date, end_date, created_at, cover_image_name" as const;
+  "id, owner_user_id, title, summary, description, project_type, collaboration_mode, recruitment_status, project_status, campus, required_roles, tools, expected_member_count, start_date, end_date, recruitment_deadline, created_at, cover_image_name" as const;
 
 const OWNER_PROFILE_SELECT = "user_id, department, display_name" as const;
-
-type OwnerProfileRow = Pick<Tables<"profiles">, "user_id" | "department" | "display_name">;
 
 /**
  * Supabase/PostgREST `.or()` parses filter strings literally; strip metacharacters
@@ -41,39 +24,6 @@ function escapeLikeQuery(value: string) {
     .replaceAll(/[,()%_*."'\\]/g, "")
     .trim()
     .slice(0, 100);
-}
-
-function mapProjectRow(
-  row: ProjectListRow,
-  ownerProfiles: Map<number, OwnerProfileRow>,
-  selfUser: { id: number; email: string; name: string | null } | null,
-) {
-  const profile = ownerProfiles.get(row.owner_user_id);
-  const isSelf = selfUser?.id === row.owner_user_id;
-
-  return {
-    id: row.id,
-    title: row.title,
-    summary: row.summary,
-    description: row.description ?? "",
-    projectType: row.project_type,
-    collaborationMode: row.collaboration_mode,
-    recruitmentStatus: row.recruitment_status,
-    campus: row.campus ?? "",
-    requiredRoles: row.required_roles ?? [],
-    tools: row.tools ?? [],
-    expectedMemberCount: row.expected_member_count,
-    startDate: row.start_date,
-    endDate: row.end_date,
-    createdAt: row.created_at,
-    coverImageName: row.cover_image_name,
-    owner: {
-      userId: row.owner_user_id,
-      email: isSelf ? (selfUser?.email ?? "") : "",
-      name: isSelf ? (selfUser?.name ?? null) : (profile?.display_name ?? null),
-      department: profile?.department ?? "",
-    },
-  } satisfies ProjectRecord;
 }
 
 async function loadOwnerContext(ownerIds: number[], currentUserId: number | null) {
@@ -100,18 +50,27 @@ async function loadOwnerContext(ownerIds: number[], currentUserId: number | null
     throw new Error(selfUserError.message);
   }
 
-  const ownerProfiles = new Map(
+  const ownerProfiles = new Map<number, OwnerProfileRow>(
     (profiles ?? []).map((profile) => [profile.user_id, profile]),
   );
 
   return {
     ownerProfiles,
-    selfUser: selfUser as { id: number; email: string; name: string | null } | null,
+    selfUser: selfUser as SelfUserRow | null,
   };
+}
+
+function asProjectListRows(data: unknown): ProjectListRow[] {
+  return (data ?? []) as ProjectListRow[];
+}
+
+function asProjectListRow(data: unknown): ProjectListRow {
+  return data as ProjectListRow;
 }
 
 export interface ProjectRepository {
   list(filters: ProjectListFilters, currentUserId: number | null): Promise<ProjectRecord[]>;
+  listMine(ownerUserId: number): Promise<ProjectRecord[]>;
   findById(id: number, currentUserId: number | null): Promise<ProjectRecord | null>;
   create(ownerUserId: number, values: ProjectFormValues): Promise<ProjectRecord>;
   findOwnerUserId(id: number): Promise<number | null>;
@@ -152,7 +111,8 @@ export const projectRepository: ProjectRepository = {
       throw new Error(error.message);
     }
 
-    const ownerIds = [...new Set((projects ?? []).map((project) => project.owner_user_id))];
+    const rows = asProjectListRows(projects);
+    const ownerIds = [...new Set(rows.map((project) => project.owner_user_id))];
 
     if (ownerIds.length === 0) {
       return [];
@@ -160,9 +120,30 @@ export const projectRepository: ProjectRepository = {
 
     const { ownerProfiles, selfUser } = await loadOwnerContext(ownerIds, currentUserId);
 
-    return (projects ?? []).map((project) =>
-      mapProjectRow(project, ownerProfiles, selfUser),
-    );
+    return rows.map((project) => mapProjectRow(project, ownerProfiles, selfUser));
+  },
+
+  async listMine(ownerUserId) {
+    const supabase = await createClient();
+    const { data: projects, error } = await supabase
+      .from("projects")
+      .select(PROJECT_SELECT)
+      .eq("owner_user_id", ownerUserId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const rows = asProjectListRows(projects);
+
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const { ownerProfiles, selfUser } = await loadOwnerContext([ownerUserId], ownerUserId);
+
+    return rows.map((project) => mapProjectRow(project, ownerProfiles, selfUser));
   },
 
   async findById(id, currentUserId) {
@@ -181,9 +162,10 @@ export const projectRepository: ProjectRepository = {
       return null;
     }
 
-    const { ownerProfiles, selfUser } = await loadOwnerContext([project.owner_user_id], currentUserId);
+    const row = asProjectListRow(project);
+    const { ownerProfiles, selfUser } = await loadOwnerContext([row.owner_user_id], currentUserId);
 
-    return mapProjectRow(project, ownerProfiles, selfUser);
+    return mapProjectRow(row, ownerProfiles, selfUser);
   },
 
   async create(ownerUserId, values) {
@@ -213,9 +195,10 @@ export const projectRepository: ProjectRepository = {
       throw new Error(error.message);
     }
 
+    const row = asProjectListRow(project);
     const { ownerProfiles, selfUser } = await loadOwnerContext([ownerUserId], ownerUserId);
 
-    return mapProjectRow(project, ownerProfiles, selfUser);
+    return mapProjectRow(row, ownerProfiles, selfUser);
   },
 
   async findOwnerUserId(id) {
@@ -261,8 +244,9 @@ export const projectRepository: ProjectRepository = {
       throw new Error(error.message);
     }
 
+    const row = asProjectListRow(project);
     const { ownerProfiles, selfUser } = await loadOwnerContext([ownerUserId], ownerUserId);
 
-    return mapProjectRow(project, ownerProfiles, selfUser);
+    return mapProjectRow(row, ownerProfiles, selfUser);
   },
 };

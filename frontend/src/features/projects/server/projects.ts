@@ -36,12 +36,14 @@ export type ProjectRecord = {
   projectType: string;
   collaborationMode: string;
   recruitmentStatus: string;
+  projectStatus: string;
   campus: string;
   requiredRoles: string[];
   tools: string[];
   expectedMemberCount: number | null;
   startDate: string | null;
   endDate: string | null;
+  recruitmentDeadline: string | null;
   createdAt: string;
   coverImageName: string | null;
   owner: {
@@ -110,6 +112,12 @@ export async function listProjects(filters: ProjectListFilters) {
   const currentUser = await getCurrentAppUser();
 
   return projectRepository.list(filters, currentUser?.id ?? null);
+}
+
+export async function listMyProjectsForSession() {
+  const currentUser = await getCurrentAppUser();
+  if (!currentUser) return null;
+  return projectRepository.listMine(currentUser.id);
 }
 
 export async function getProjectById(projectId: number) {
