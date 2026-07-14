@@ -1,4 +1,4 @@
-import { isProjectAcceptingNewParticipants } from "../../projects/server/projects.guards.ts";
+import { isRecruitmentOpen, isoDateUtc } from "../../matching/server/recruitment-eligibility.ts";
 
 export const PROJECT_SCORE_WEIGHTS = {
   role: 40,
@@ -54,7 +54,7 @@ export type ProjectRecommendationCandidate = {
   requiredRoles: string[];
   tools: string[];
   recruitmentStatus: string;
-  endDate: string | null;
+  recruitmentDeadline: string | null;
   createdAt: string;
 };
 
@@ -148,12 +148,15 @@ export function scoreRecruitingStatus(recruitmentStatus: string) {
   return recruitmentStatus === "RECRUITING" ? PROJECT_SCORE_WEIGHTS.recruiting : 0;
 }
 
-export function scoreDeadlineBuffer(endDate: string | null, referenceDate = new Date()) {
-  if (!endDate?.trim()) {
+export function scoreDeadlineBuffer(
+  recruitmentDeadline: string | null,
+  referenceDate = new Date(),
+) {
+  if (!recruitmentDeadline?.trim()) {
     return 0;
   }
 
-  const deadline = new Date(endDate);
+  const deadline = new Date(recruitmentDeadline);
 
   if (Number.isNaN(deadline.getTime()) || deadline < referenceDate) {
     return 0;
@@ -292,6 +295,7 @@ export function rankProjects(
   options: RankOptions = {},
 ) {
   const referenceDate = options.referenceDate ?? new Date();
+  const today = isoDateUtc(referenceDate);
   const appliedProjectIds = new Set(viewer.appliedProjectIds);
 
   return projects
@@ -299,12 +303,12 @@ export function rankProjects(
       (project) =>
         project.ownerUserId !== viewer.userId &&
         !appliedProjectIds.has(project.id) &&
-        isProjectAcceptingNewParticipants(
+        isRecruitmentOpen(
           {
             recruitment_status: project.recruitmentStatus,
-            end_date: project.endDate,
+            recruitment_deadline: project.recruitmentDeadline,
           },
-          referenceDate,
+          today,
         ),
     )
     .map((project) => {
@@ -313,7 +317,7 @@ export function rankProjects(
         tool: scoreToolMatch(viewer.toolTags, project.tools),
         campus: scoreCampusMatch(viewer.campus, project.campus),
         recruiting: scoreRecruitingStatus(project.recruitmentStatus),
-        deadline: scoreDeadlineBuffer(project.endDate, referenceDate),
+        deadline: scoreDeadlineBuffer(project.recruitmentDeadline, referenceDate),
         profileReadiness: scoreProfileReadiness(
           viewer.displayName,
           viewer.campus,

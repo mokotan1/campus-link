@@ -4,6 +4,7 @@ import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
 import { AppError } from "@/lib/api/error";
 
 import { validateProjectDates } from "./projects.guards";
+import { listMyProjectsForUser } from "./projects.mapper";
 import { projectRepository } from "./projects.repository";
 
 export type ProjectFormValues = {
@@ -37,12 +38,14 @@ export type ProjectRecord = {
   projectType: string;
   collaborationMode: string;
   recruitmentStatus: string;
+  projectStatus: string;
   campus: string;
   requiredRoles: string[];
   tools: string[];
   expectedMemberCount: number | null;
   startDate: string | null;
   endDate: string | null;
+  recruitmentDeadline: string | null;
   createdAt: string;
   coverImageName: string | null;
   owner: {
@@ -113,6 +116,13 @@ export async function listProjects(filters: ProjectListFilters) {
   const currentUser = await getCurrentAppUser();
 
   return projectRepository.list(filters, currentUser?.id ?? null);
+}
+
+export async function listMyProjectsForSession() {
+  const currentUser = await getCurrentAppUser();
+  return listMyProjectsForUser(currentUser, (ownerUserId) =>
+    projectRepository.listMine(ownerUserId),
+  );
 }
 
 export async function getProjectById(projectId: number) {

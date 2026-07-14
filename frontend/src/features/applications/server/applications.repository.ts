@@ -1,9 +1,11 @@
 import "server-only";
 
+import type { MatchingEligibility } from "@/features/matching/server/recruitment-eligibility";
 import type { Tables } from "@/lib/supabase/database.types";
 import { throwAppErrorFromRpc } from "@/lib/supabase/rpc-error";
 import { createClient } from "@/lib/supabase/server";
 
+import type { ApplicationDetailRow } from "./applications.guards";
 import type { MyApplicationRecord } from "./applications";
 import {
   mapReceivedApplicationRows,
@@ -25,7 +27,13 @@ type ApplicationListRow = Pick<
   | "created_at"
 >;
 
-type ApplicationDetailRow = ApplicationListRow;
+/** Local extension until generated types include `recruitment_deadline`. */
+type ProjectSummaryRow = Pick<
+  Tables<"projects">,
+  "id" | "owner_user_id" | "title" | "campus" | "recruitment_status" | "required_roles"
+> & {
+  recruitment_deadline: string | null;
+};
 
 type OwnedProjectRow = Pick<
   Tables<"projects">,
@@ -39,22 +47,11 @@ type ApplicantProfileRow = Pick<
   "user_id" | "display_name" | "department"
 >;
 
-type ProjectSummaryRow = Pick<
-  Tables<"projects">,
-  | "id"
-  | "owner_user_id"
-  | "title"
-  | "campus"
-  | "recruitment_status"
-  | "required_roles"
-  | "end_date"
->;
-
 const APPLICATION_SELECT =
   "id, project_id, applicant_user_id, message, application_status, target_role, created_at" as const;
 
 const PROJECT_SUMMARY_SELECT =
-  "id, owner_user_id, title, campus, recruitment_status, required_roles, end_date" as const;
+  "id, owner_user_id, title, campus, recruitment_status, recruitment_deadline, required_roles";
 
 function mapApplicationRow(
   row: ApplicationListRow,
@@ -91,6 +88,7 @@ export type MatchedContactDetails = {
 
 export interface ApplicationRepository {
   findProjectSummary(projectId: number): Promise<ProjectSummary | null>;
+  findApplicantEligibility(userId: number): Promise<MatchingEligibility | null>;
   findExisting(projectId: number, applicantUserId: number): Promise<{ id: number } | null>;
   findById(applicationId: number): Promise<ApplicationDetailRow | null>;
   create(
@@ -105,8 +103,8 @@ export interface ApplicationRepository {
   ownerDecide(
     applicationId: number,
     decision: "ACCEPTED" | "REJECTED",
-  ): Promise<ApplicationDetailRow>;
-  applicantWithdraw(applicationId: number): Promise<ApplicationDetailRow>;
+  ): Promise<unknown>;
+  applicantWithdraw(applicationId: number): Promise<unknown>;
   getMatchedContactDetails(otherUserId: number): Promise<MatchedContactDetails | null>;
 }
 
@@ -123,7 +121,38 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error(error.message);
     }
 
-    return project ?? null;
+    return (project as unknown as ProjectSummaryRow | null) ?? null;
+  },
+
+  async findApplicantEligibility(userId) {
+    const supabase = await createClient();
+
+    const [userResult, profileResult] = await Promise.all([
+      supabase.from("users").select("email_verified").eq("id", userId).maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("onboarding_completed, collaboration_status")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
+
+    if (userResult.error) {
+      throw new Error(userResult.error.message);
+    }
+
+    if (profileResult.error) {
+      throw new Error(profileResult.error.message);
+    }
+
+    if (!userResult.data || !profileResult.data) {
+      return null;
+    }
+
+    return {
+      email_verified: userResult.data.email_verified,
+      onboarding_completed: profileResult.data.onboarding_completed,
+      collaboration_status: profileResult.data.collaboration_status,
+    };
   },
 
   async findExisting(projectId, applicantUserId) {
@@ -211,7 +240,12 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error(projectsError.message);
     }
 
-    const projectMap = new Map((projects ?? []).map((project) => [project.id, project]));
+    const projectMap = new Map(
+      ((projects ?? []) as unknown as ProjectSummaryRow[]).map((project) => [
+        project.id,
+        project,
+      ]),
+    );
 
     return (applications ?? []).map((application) =>
       mapApplicationRow(application, projectMap, "sent"),
@@ -229,7 +263,8 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error(projectsError.message);
     }
 
-    const projectIds = (projects ?? []).map((project) => project.id);
+    const ownedProjects = (projects ?? []) as unknown as ProjectSummaryRow[];
+    const projectIds = ownedProjects.map((project) => project.id);
 
     if (projectIds.length === 0) {
       return [];
@@ -245,7 +280,7 @@ export const applicationRepository: ApplicationRepository = {
       throw new Error(applicationsError.message);
     }
 
-    const projectMap = new Map((projects ?? []).map((project) => [project.id, project]));
+    const projectMap = new Map(ownedProjects.map((project) => [project.id, project]));
 
     return (applications ?? []).map((application) =>
       mapApplicationRow(application, projectMap, "received"),
@@ -335,7 +370,7 @@ export const applicationRepository: ApplicationRepository = {
       throwAppErrorFromRpc(error);
     }
 
-    return data as ApplicationDetailRow;
+    return data;
   },
 
   async applicantWithdraw(applicationId) {
@@ -348,7 +383,7 @@ export const applicationRepository: ApplicationRepository = {
       throwAppErrorFromRpc(error);
     }
 
-    return data as ApplicationDetailRow;
+    return data;
   },
 
   async getMatchedContactDetails(otherUserId) {
@@ -379,4 +414,3 @@ export const applicationRepository: ApplicationRepository = {
     };
   },
 };
-

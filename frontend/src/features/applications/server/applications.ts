@@ -2,10 +2,15 @@ import "server-only";
 
 import type { CurrentAppUser } from "@/features/auth/server/current-app-user.mapper";
 import { getCurrentAppUser } from "@/features/auth/server/current-app-user";
+import {
+  assertActorEligible,
+  isoDateUtc,
+} from "@/features/matching/server/recruitment-eligibility";
 import { AppError } from "@/lib/api/error";
 
 import {
   assertApplicantForWithdraw,
+  assertApplicationTransitionResult,
   assertCanApplyToProject,
   assertNoDuplicateApplication,
   assertPendingApplicationStatus,
@@ -71,7 +76,18 @@ export async function createApplication(
     throw new AppError("NOT_FOUND", "프로젝트를 찾을 수 없습니다.");
   }
 
-  assertCanApplyToProject(currentUser, project);
+  assertCanApplyToProject(currentUser, project, isoDateUtc());
+
+  const eligibility = await applicationRepository.findApplicantEligibility(currentUser.id);
+
+  if (!eligibility) {
+    throw new AppError(
+      "FORBIDDEN",
+      "이메일 인증과 온보딩을 완료한 사용자만 지원하거나 제안할 수 있습니다.",
+    );
+  }
+
+  assertActorEligible(eligibility);
 
   if (!(project.required_roles ?? []).includes(values.targetRole)) {
     throw new AppError(
@@ -112,7 +128,8 @@ export async function withdrawApplication(
   assertApplicantForWithdraw(currentUser, application.applicant_user_id);
   assertPendingApplicationStatus(application.application_status);
 
-  return applicationRepository.applicantWithdraw(applicationId);
+  const result = await applicationRepository.applicantWithdraw(applicationId);
+  return assertApplicationTransitionResult(result, applicationId, "CANCELED");
 }
 
 export async function decideApplication(
@@ -139,7 +156,8 @@ export async function decideApplication(
   assertProjectOwnerForApplicationDecision(currentUser, project.owner_user_id);
   assertPendingApplicationStatus(application.application_status);
 
-  return applicationRepository.ownerDecide(applicationId, decision);
+  const result = await applicationRepository.ownerDecide(applicationId, decision);
+  return assertApplicationTransitionResult(result, applicationId, decision);
 }
 
 export async function getMatchedContactDetails(

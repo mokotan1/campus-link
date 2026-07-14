@@ -187,3 +187,114 @@ curl http://localhost:3000/api/proposals/me
 - 이번 브랜치에서는 새 Supabase migration 파일을 추가하지 않았다.
 - 소스 코드 안에 디버깅용 `console.log`는 넣지 않았다.
 - 기존 프론트 화면을 유지하면서 API 연결 위주로 붙였다.
+
+## 9. Backend rollout verification (B3 / B5 / B6 / B7 / B9)
+
+Local automated evidence for Task 12 (2026-07-14). Remote migration push is **PENDING operator backup confirmation** (Tasks 3/5 remote blocked). Do not treat remote as live until push + smoke pass.
+
+### Local verification status (this run)
+
+| Check | Result |
+| --- | --- |
+| 
+ode --test all src/**/*.test.mjs | PASS (52 tests, 0 fail) |
+| 
+pm run typecheck | PASS |
+| 
+pm run lint | PASS |
+| 
+pm run build | PASS |
+| supabase/tests/rls-p0.sql (local Docker) | PASS |
+| supabase/tests/project-recruitment-migration.sql (local Docker) | PASS |
+| supabase/tests/remote-rollout-smoke.sql (local Docker) | PASS |
+| Remote db push / advisors / two-account API against cloud | SKIPPED (awaiting operator) |
+
+### B3 — Recruitment deadline / closed exposure
+
+Smoke once remote is live (signed-in browser or etch with session cookie):
+
+1. Create or use a project with project_status=RECRUITING and ecruitment_deadline in the past → apply / propose must fail (INVALID_STATE_TRANSITION or equivalent 4xx).
+2. Same project with deadline = today or future → apply / propose allowed (other eligibility rules still apply).
+3. Closed project → apply / propose rejected; must not appear in project recommendations.
+
+`	ext
+POST /api/applications          → future/today success; past/closed rejected
+POST /api/proposals             → owned open project only; past/closed rejected
+GET  /api/recommendations/projects → no closed/expired project IDs
+`
+
+### B5 — Application transition response contract
+
+Owner-only accept/reject; applicant-only withdraw. Response must echo requested application id and exact terminal status.
+
+`	ext
+POST /api/applications/:id/accept   → owner only; body id + ACCEPTED
+POST /api/applications/:id/reject   → owner only; body id + REJECTED
+POST /api/applications/:id/withdraw → applicant only; body id + CANCELED
+repeat any terminal transition      → 409 INVALID_STATE_TRANSITION
+`
+
+### B6 — Proposal create conditions
+
+`	ext
+POST /api/proposals
+  - sender must own an open (non-expired) recruiting project
+  - receiver must be email-verified, onboarding-complete, collaboration OPEN
+  - sender ≠ receiver; duplicate project/sender/receiver rejected
+`
+
+### B7 — Mine list
+
+`	ext
+GET /api/projects/mine
+  - signed out → 401
+  - signed in  → only caller-owned rows; each item includes projectStatus + recruitmentDeadline
+`
+
+### Endpoints to smoke-test once remote is live
+
+`ash
+curl http://localhost:3000/api/auth/me
+curl http://localhost:3000/api/projects
+curl http://localhost:3000/api/projects/mine
+curl http://localhost:3000/api/applications/me
+curl http://localhost:3000/api/proposals/sent
+curl http://localhost:3000/api/proposals/received
+curl http://localhost:3000/api/recommendations/projects
+`
+
+Session-required routes: prefer browser DevTools etch(...) while logged in.
+
+Two-account matrix (after remote push):
+
+`	ext
+application create: future/today success; past/closed rejected
+application accept/reject: owner only; response id/status correct
+application withdraw: applicant only; response id/CANCELED correct
+proposal create: owned open project + eligible receiver only
+recommendations: no closed/expired project IDs
+GET /api/projects/mine: 401 signed out; only caller-owned rows signed in
+repeat transition: 409 INVALID_STATE_TRANSITION
+`
+
+### Type-generation handoff (after remote schema is authoritative)
+
+Remote push is **PENDING operator backup confirmation**. After push succeeds through the required migration tail, regenerate types (separate worker commit). Do **not** hand-edit database.types.ts.
+
+`	ext
+project ref: cwbmfnenunqzwwypqipc
+required migration tail after push: 20260714024052 (matching) or at least 20260714014555
+output: frontend/src/lib/supabase/database.types.ts
+command family: npx.cmd supabase gen types typescript --project-id cwbmfnenunqzwwypqipc
+`
+
+Expected generated surface: projects.project_status, projects.recruitment_deadline, proposals, transition RPCs (pplicant_withdraw_application, owner_decide_application, eceiver_decide_proposal, sender_cancel_proposal), and get_matching_eligibility.
+
+### Operator remains
+
+1. Confirm backup / PITR recovery point.
+2. supabase link to cwbmfnenunqzwwypqipc if needed; repair history if cover-image mismatch.
+3. Remote db push through 20260714024052 (or at least 20260714014555).
+4. Run emote-rollout-smoke.sql read-only against remote; re-check advisors.
+5. Two-account API smoke (section above).
+6. Type-gen worker → commit updated rontend/src/lib/supabase/database.types.ts.

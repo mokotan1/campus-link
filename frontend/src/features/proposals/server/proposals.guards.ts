@@ -1,23 +1,19 @@
 import { AppError } from "../../../lib/api/error.ts";
-import { assertProjectAcceptingNewParticipants } from "../../projects/server/projects.guards.ts";
 
 import type { CurrentAppUser } from "../../auth/server/current-app-user.mapper.ts";
+import type { MatchingEligibility } from "../../matching/server/recruitment-eligibility.ts";
 
-type ProjectSummary = {
+type ProjectOwnerSummary = {
   owner_user_id: number;
-  recruitment_status: string;
-  end_date: string | null;
 };
 
 export function assertProjectOwnerForProposal(
   currentUser: CurrentAppUser,
-  project: ProjectSummary,
+  project: ProjectOwnerSummary,
 ) {
   if (project.owner_user_id !== currentUser.id) {
     throw new AppError("FORBIDDEN", "프로젝트 소유자만 제안을 보낼 수 있습니다.");
   }
-
-  assertProjectAcceptingNewParticipants(project);
 }
 
 export function assertDistinctProposalUsers(
@@ -38,6 +34,14 @@ export function assertProposalMessage(message: string) {
 export function assertNoDuplicateProposal(existing: { id: number } | null) {
   if (existing) {
     throw new AppError("DUPLICATE_RESOURCE", "이미 이 사용자에게 제안을 보냈습니다.");
+  }
+}
+
+export function assertProposalReceiverExists(
+  profile: MatchingEligibility | null,
+): asserts profile is MatchingEligibility {
+  if (!profile) {
+    throw new AppError("NOT_FOUND", "수신자를 찾을 수 없습니다.");
   }
 }
 

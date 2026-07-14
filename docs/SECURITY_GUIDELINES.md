@@ -19,23 +19,58 @@ Campus Link는 학교 기반 협업 매칭 웹서비스이므로, 일반 웹 보
 
 ### 2.1 PostgreSQL RLS (MVP P0)
 
-MVP 공개 테이블(`users`, `profiles`, `portfolio_items`, `projects`, `applications`)은 모두 RLS가 활성화되어 있으며, 명시적 정책이 없으면 기본 거부(default-deny)입니다. `using (true)` 같은 전면 허용 정책은 사용하지 않습니다.
+MVP 공개 테이블(`users`, `profiles`, `portfolio_items`, `projects`, `applications`, `proposals`)은 모두 RLS가 활성화되어 있으며, 명시적 정책이 없으면 기본 거부(default-deny)입니다. `using (true)` 같은 전면 허용 정책은 사용하지 않습니다.
 
 - **신원 매핑:** `public.current_app_user_id()`가 `auth.uid()`를 bigint `public.users.id`로 변환합니다. `getCurrentAppUser()`가 `users`를 조회할 수 있도록, 인증 사용자는 `auth_user_id = auth.uid()`인 본인 행만 `SELECT`할 수 있습니다.
 - **users:** 인증 사용자는 `id = current_app_user_id()`인 본인 행만 `UPDATE`할 수 있습니다. 프로필 온보딩에서 `campus` 저장 시 세션 클라이언트가 이 정책을 통과합니다. 다른 사용자의 `users` 행은 수정할 수 없습니다.
 - **profiles:** 인증 사용자는 프로필을 읽을 수 있고, `INSERT`/`UPDATE`는 `user_id = current_app_user_id()`인 본인 행만 가능합니다.
 - **portfolio_items:** 인증 사용자는 포트폴리오를 읽을 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
-- **projects:** 인증 사용자는 `RECRUITING` 프로젝트와 본인 소유 프로젝트를 `SELECT`할 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
-- **applications:** 지원자는 `PENDING` 상태로 본인 지원을 생성·조회할 수 있습니다. 프로젝트 소유자는 해당 프로젝트 지원을 조회할 수 있습니다. 상태 전환(`PENDING`→`ACCEPTED`/`REJECTED`, `PENDING`→`CANCELED`)은 `owner_decide_application()` 및 `applicant_withdraw_application()` 보안 함수로만 수행합니다. 테이블에 직접 `UPDATE` 정책은 두지 않습니다.
-- **상태 값 검증:** `applications.application_status`, `projects.recruitment_status`, `profiles.collaboration_status`에 `CHECK` 제약이 있습니다.
+- **projects:** 인증 사용자는 본인 소유 프로젝트, 또는 `RECRUITING`이면서 마감일이 유효한(null이거나 `current_date` 이상) 프로젝트를 `SELECT`할 수 있고, `INSERT`/`UPDATE`/`DELETE`는 소유자만 가능합니다.
+- **applications:** 지원자는 `PENDING` 상태로 본인 지원을 생성·조회할 수 있습니다. 신규 지원 `INSERT`는 대상 프로젝트가 `RECRUITING`이고 마감일이 유효할 때만 허용됩니다. 프로젝트 소유자는 해당 프로젝트 지원을 조회할 수 있습니다. 상태 전환(`PENDING`→`ACCEPTED`/`REJECTED`, `PENDING`→`CANCELED`)은 `owner_decide_application()` 및 `applicant_withdraw_application()` 보안 함수로만 수행합니다. 테이블에 직접 `UPDATE` 정책은 두지 않습니다.
+- **proposals:** 프로젝트 소유자는 유효한 `RECRUITING` 프로젝트에서 제안을 생성할 수 있고, 송신자·수신자는 관련 제안을 조회할 수 있습니다. 상태 전환은 보안 함수로 처리합니다.
+- **상태 값 검증:** `applications.application_status`, `projects.recruitment_status`, `projects.project_status`, `profiles.collaboration_status`에 `CHECK` 제약이 있습니다.
 
-RLS 검증 스크립트: `frontend/supabase/tests/rls-p0.sql`  
+**Data API 테이블 권한(grants repair)**
+
+PostgREST Data API용 권한 복구 마이그레이션(`frontend/supabase/migrations/20260714014554_grant_public_table_privileges_for_data_api.sql`)은 `authenticated`와 `service_role`에만 MVP 테이블에 대한 명시적 DML(`SELECT`/`INSERT`/`UPDATE`/`DELETE`)을 부여합니다. `anon`에는 DML을 주지 않습니다. 행 단위 경계는 계속 RLS가 담당합니다.
+
+### 2.2 모집·진행 상태 및 마감일 계약
+
+프로젝트의 모집 상태와 진행 상태는 독립적입니다. 진행 상태를 바꿔도 모집이 암묵적으로 열리거나 닫히지 않아야 합니다.
+
+```text
+recruitment_status: RECRUITING | CLOSED
+project_status: PREPARING | IN_PROGRESS | COMPLETED
+```
+
+**마감일 자격(eligibility)**
+
+- 지원(`applications`)·제안(`proposals`) `INSERT`는 `recruitment_status = RECRUITING`이고, `recruitment_deadline`이 null(레거시 호환)이거나 `current_date` 이상인 프로젝트에만 허용됩니다.
+- 비소유자의 `projects` `SELECT`도 동일한 마감일 조건을 따릅니다. 소유자는 만료된 프로젝트도 읽을 수 있습니다.
+- 모집이 닫힌 뒤에도 기존 지원·제안은 조회·처리 가능합니다. 제안/지원 상태 전환 RPC는 이 계약에서 변경하지 않습니다.
+- 마감일 비교는 DB 세션의 `current_date`를 사용합니다(Supabase에서는 타임존이 UTC일 수 있음).
+
+**롤아웃 경계**
+
+- `recruitment_deadline`은 레거시 행 호환을 위해 당분간 nullable입니다.
+- API/프론트엔드 후속 작업에서 프로젝트 생성·수정 시 마감일을 필수로 요구해야 합니다.
+- 레거시 데이터 정리가 끝난 뒤에만 별도 마이그레이션으로 `NOT NULL`을 적용하고, RLS의 null 호환 분기를 제거합니다.
+
+**검증 스크립트**
+
+- RLS P0: `frontend/supabase/tests/rls-p0.sql`
+- 모집·마감일 계약(스키마·grants·마감일 RLS): `frontend/supabase/tests/project-recruitment-migration.sql`
+
 마이그레이션 적용 후 실행:
 
 ```bash
 cd frontend
-npx supabase db push
-psql "$SUPABASE_DB_URL" -f supabase/tests/rls-p0.sql
+npx supabase db reset --local --yes
+# Docker 로컬 DB에 계약 테스트 파이프
+Get-Content ..\frontend\supabase\tests\project-recruitment-migration.sql -Raw |
+  docker exec -i supabase_db_frontend psql -U postgres -d postgres -v ON_ERROR_STOP=1
+Get-Content ..\frontend\supabase\tests\rls-p0.sql -Raw |
+  docker exec -i supabase_db_frontend psql -U postgres -d postgres -v ON_ERROR_STOP=1
 ```
 
 서버 코드는 세션 클라이언트로 RLS를 통과시키고, 서비스 롤 클라이언트는 부트스트랩·유지보수 등 명시적으로 문서화된 경우에만 사용합니다.

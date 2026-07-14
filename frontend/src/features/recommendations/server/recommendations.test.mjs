@@ -27,7 +27,7 @@ const rankingProjects = [
     requiredRoles: ["Backend"],
     tools: ["React", "TypeScript", "Node.js"],
     recruitmentStatus: "RECRUITING",
-    endDate: "2026-08-01",
+    recruitmentDeadline: "2026-08-01",
     createdAt: "2026-07-09T10:00:00.000Z",
   },
   {
@@ -39,7 +39,7 @@ const rankingProjects = [
     requiredRoles: ["Backend"],
     tools: ["React", "Python"],
     recruitmentStatus: "RECRUITING",
-    endDate: "2026-08-01",
+    recruitmentDeadline: null,
     createdAt: "2026-07-10T10:00:00.000Z",
   },
   {
@@ -51,7 +51,7 @@ const rankingProjects = [
     requiredRoles: ["Frontend"],
     tools: ["Vue"],
     recruitmentStatus: "RECRUITING",
-    endDate: "2026-08-01",
+    recruitmentDeadline: null,
     createdAt: "2026-07-08T10:00:00.000Z",
   },
 ];
@@ -80,7 +80,7 @@ test("excludes own projects and already-applied projects", () => {
         requiredRoles: ["Backend"],
         tools: ["React"],
         recruitmentStatus: "RECRUITING",
-        endDate: "2026-08-01",
+        recruitmentDeadline: "2026-08-01",
         createdAt: "2026-07-11T10:00:00.000Z",
       },
     ],
@@ -93,43 +93,79 @@ test("excludes own projects and already-applied projects", () => {
   );
 });
 
-test("excludes closed and expired projects from recommendations", () => {
+test("excludes closed and expired projects before scoring", () => {
   const ranked = rankProjects(
     viewerProfile,
     [
-      ...rankingProjects,
       {
-        id: 51,
-        ownerUserId: 102,
-        title: "Expired",
-        summary: "Deadline has passed",
+        id: 101,
+        ownerUserId: 200,
+        title: "Closed",
+        summary: "Closed project",
+        campus: "Seoul",
+        requiredRoles: ["Backend"],
+        tools: ["React", "TypeScript", "Node.js"],
+        recruitmentStatus: "CLOSED",
+        recruitmentDeadline: "2026-08-01",
+        createdAt: "2026-07-11T10:00:00.000Z",
+      },
+      {
+        id: 102,
+        ownerUserId: 201,
+        title: "Yesterday Deadline",
+        summary: "Expired yesterday",
+        campus: "Seoul",
+        requiredRoles: ["Backend"],
+        tools: ["React", "TypeScript", "Node.js"],
+        recruitmentStatus: "RECRUITING",
+        recruitmentDeadline: "2026-07-09",
+        createdAt: "2026-07-11T09:00:00.000Z",
+      },
+      {
+        id: 103,
+        ownerUserId: 202,
+        title: "Today Deadline",
+        summary: "Closes today",
         campus: "Seoul",
         requiredRoles: ["Backend"],
         tools: ["React"],
         recruitmentStatus: "RECRUITING",
-        endDate: "2026-07-09",
-        createdAt: "2026-07-11T10:00:00.000Z",
+        recruitmentDeadline: "2026-07-10",
+        createdAt: "2026-07-09T10:00:00.000Z",
       },
       {
-        id: 52,
-        ownerUserId: 103,
-        title: "Closed",
-        summary: "Recruiting closed",
+        id: 104,
+        ownerUserId: 203,
+        title: "Future Deadline",
+        summary: "Still open",
         campus: "Seoul",
         requiredRoles: ["Backend"],
         tools: ["React"],
-        recruitmentStatus: "CLOSED",
-        endDate: "2026-08-01",
-        createdAt: "2026-07-11T10:00:00.000Z",
+        recruitmentStatus: "RECRUITING",
+        recruitmentDeadline: "2026-08-01",
+        createdAt: "2026-07-08T10:00:00.000Z",
+      },
+      {
+        id: 105,
+        ownerUserId: 204,
+        title: "Legacy Null Deadline",
+        summary: "No deadline set",
+        campus: "Seoul",
+        requiredRoles: ["Backend"],
+        tools: ["React"],
+        recruitmentStatus: "RECRUITING",
+        recruitmentDeadline: null,
+        createdAt: "2026-07-07T10:00:00.000Z",
       },
     ],
     { referenceDate },
   );
 
-  assert.deepEqual(
-    ranked.map(({ id }) => id),
-    [12, 7, 3],
-  );
+  const rankedIds = ranked.map(({ id }) => id);
+
+  assert.deepEqual(rankedIds.slice().sort((left, right) => left - right), [103, 104, 105]);
+  assert.ok(!rankedIds.includes(101));
+  assert.ok(!rankedIds.includes(102));
 });
 
 test("returns explainable reason codes for project recommendations", () => {
