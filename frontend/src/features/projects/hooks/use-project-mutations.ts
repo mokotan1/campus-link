@@ -10,6 +10,7 @@ type NewProjectInput = {
   campus: Project["campus"];
   role: string;
   status: Project["status"];
+  recruitmentDeadline: string;
   summary: string;
   content: string;
   tagLabels: string[];
@@ -40,7 +41,7 @@ export function useProjectMutations() {
             tools: input.tagLabels,
             expectedMemberCount: null,
             startDate: "",
-            endDate: "",
+            endDate: input.recruitmentDeadline,
             coverImageName: input.coverImageName ?? "",
           }),
         }),
