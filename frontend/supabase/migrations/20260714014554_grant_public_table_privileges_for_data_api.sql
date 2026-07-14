@@ -1,8 +1,10 @@
 -- Environment repair: Data API privileges for PostgREST + RLS.
 -- Separate from feature migrations (plan Task 1 Step 4).
 -- Do NOT grant DML to anon — MVP policies target authenticated only.
--- Do NOT use ON ALL TABLES or ALTER DEFAULT PRIVILEGES for anon
+-- Do NOT grant via ON ALL TABLES or ALTER DEFAULT PRIVILEGES to anon
 -- (avoids undoing Supabase 2026 opt-in Data API defaults).
+-- Below we REVOKE current table/sequence privileges and default privileges
+-- from anon (and execute from public/anon) — this is revoke, not grant.
 
 grant usage on schema public to authenticated, service_role;
 

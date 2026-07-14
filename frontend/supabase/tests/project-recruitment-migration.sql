@@ -87,6 +87,15 @@ DECLARE
     'applications',
     'proposals'
   ];
+  -- Full revoke list from 20260714014554 (not just MVP DML tables).
+  revoked_tables text[] := ARRAY[
+    'users',
+    'profiles',
+    'portfolio_items',
+    'projects',
+    'applications',
+    'proposals'
+  ];
   dml_privs text[] := ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
 BEGIN
   FOREACH tbl IN ARRAY mvp_tables LOOP
@@ -100,26 +109,20 @@ BEGIN
       '[PASS] authenticated has SELECT/INSERT/UPDATE/DELETE on public.%', tbl;
   END LOOP;
 
-  IF has_table_privilege('anon', 'public.projects', 'INSERT') THEN
-    RAISE EXCEPTION '[FAIL] anon must NOT have INSERT on public.projects';
-  END IF;
-
-  RAISE NOTICE '[PASS] anon does not have INSERT on public.projects';
-
-  IF has_table_privilege('anon', 'public.projects', 'SELECT') THEN
-    RAISE EXCEPTION '[FAIL] anon must NOT have SELECT on public.projects';
-  END IF;
-
-  RAISE NOTICE '[PASS] anon does not have SELECT on public.projects';
-
-  -- Least-privilege: anon must retain no MVP table DML after revoke.
-  IF has_table_privilege('anon', 'public.projects', 'SELECT,INSERT,UPDATE,DELETE')
-     OR has_table_privilege('anon', 'public.applications', 'SELECT,INSERT,UPDATE,DELETE')
-     OR has_table_privilege('anon', 'public.proposals', 'SELECT,INSERT,UPDATE,DELETE') THEN
-    RAISE EXCEPTION '[FAIL] anon retains MVP table DML';
-  END IF;
-
-  RAISE NOTICE '[PASS] anon retains no MVP table DML on projects/applications/proposals';
+  -- Least-privilege: anon must retain no DML after revoke.
+  -- Check each privilege separately — compound has_table_privilege(...,
+  -- 'SELECT,INSERT,UPDATE,DELETE') is ALL-of and can pass falsely when
+  -- anon still holds a subset (e.g. SELECT only on applications).
+  FOREACH tbl IN ARRAY revoked_tables LOOP
+    FOREACH priv IN ARRAY dml_privs LOOP
+      IF has_table_privilege('anon', 'public.' || tbl, priv) THEN
+        RAISE EXCEPTION
+          '[FAIL] anon must NOT have % on public.%', priv, tbl;
+      END IF;
+    END LOOP;
+    RAISE NOTICE
+      '[PASS] anon retains no SELECT/INSERT/UPDATE/DELETE on public.%', tbl;
+  END LOOP;
 END;
 $grants$;
 
@@ -630,8 +633,14 @@ BEGIN
   RAISE NOTICE
     '[PASS] every non-null end_date has matching recruitment_deadline';
 
-  -- Migration UPDATE nulls legacy zeros before the positive CHECK; after
-  -- migration no non-positive expected_member_count may remain.
+  -- Zero→NULL transform proof:
+  --   (1) Migration 20260714014555 runs
+  --         UPDATE … SET expected_member_count = NULL WHERE … <= 0
+  --       immediately before adding projects_expected_member_count_positive_check.
+  --   (2) This post-state assert confirms no non-positive values remain.
+  -- Inserts of 0/-1 in Step 2 only prove the CHECK after migration; they cannot
+  -- seed a pre-CHECK zero without violating it. Remote preflight is the
+  -- acceptance path for confirming legacy zeros existed before apply.
   IF EXISTS (
     SELECT 1
     FROM public.projects
@@ -641,7 +650,8 @@ BEGIN
     RAISE EXCEPTION '[FAIL] non-positive expected_member_count remains';
   END IF;
 
-  RAISE NOTICE '[PASS] no non-positive expected_member_count remains';
+  RAISE NOTICE
+    '[PASS] no non-positive expected_member_count remains (zero→NULL post-state)';
 
   IF NOT EXISTS (
     SELECT 1
