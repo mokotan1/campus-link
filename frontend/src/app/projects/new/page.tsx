@@ -10,6 +10,13 @@ import type { Campus, Project } from "@/shared/types";
 
 const statusOptions: Project["status"][] = ["모집중", "진행중", "완료"];
 
+function getLocalDate() {
+  const now = new Date();
+  const timezoneOffset = now.getTimezoneOffset() * 60_000;
+
+  return new Date(now.getTime() - timezoneOffset).toISOString().slice(0, 10);
+}
+
 export default function NewProjectPage() {
   const router = useRouter();
   const { createProject, projectSaveState } = useProjectMutations();
@@ -20,16 +27,20 @@ export default function NewProjectPage() {
   const [campus, setCampus] = useState<Campus>("대명캠");
   const [role, setRole] = useState(roleOptions[0]);
   const [status, setStatus] = useState<Project["status"]>(statusOptions[0]);
+  const [recruitmentDeadline, setRecruitmentDeadline] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [coverFileName, setCoverFileName] = useState<string | undefined>(undefined);
+  const today = getLocalDate();
+  const recruitmentDeadlineError = Boolean(recruitmentDeadline && recruitmentDeadline < today);
 
   const missingFields = [
     title.trim().length === 0 && "제목",
     summary.trim().length === 0 && "한 줄 소개",
     content.trim().length === 0 && "본문",
+    recruitmentDeadline.length === 0 && "모집 마감일",
   ].filter((value): value is string => Boolean(value));
 
-  const isValid = missingFields.length === 0;
+  const isValid = missingFields.length === 0 && !recruitmentDeadlineError;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -41,6 +52,7 @@ export default function NewProjectPage() {
         campus,
         role,
         status,
+        recruitmentDeadline,
         summary: summary.trim(),
         content: content.trim(),
         tagLabels: tagsInput
@@ -113,7 +125,7 @@ export default function NewProjectPage() {
 
           <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-black uppercase tracking-[0.08em] text-slate-500">모집 정보</h2>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="grid gap-2 text-sm font-extrabold text-slate-700">
                 캠퍼스
                 <select
@@ -148,6 +160,22 @@ export default function NewProjectPage() {
                     <option key={option}>{option}</option>
                   ))}
                 </select>
+              </label>
+              <label className="grid gap-2 text-sm font-extrabold text-slate-700">
+                <span>
+                  모집 마감일 <span className="text-rose-600">*</span>
+                </span>
+                <input
+                  className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-3 font-medium outline-none focus:border-teal-700 focus:ring-4 focus:ring-teal-100"
+                  type="date"
+                  min={today}
+                  value={recruitmentDeadline}
+                  onChange={(event) => setRecruitmentDeadline(event.target.value)}
+                  required
+                />
+                {recruitmentDeadlineError && (
+                  <span className="text-xs font-bold text-rose-600">오늘 이전 날짜는 선택할 수 없어요.</span>
+                )}
               </label>
             </div>
             <label className="grid gap-2 text-sm font-extrabold text-slate-700">
