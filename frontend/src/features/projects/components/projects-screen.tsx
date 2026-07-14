@@ -255,9 +255,6 @@ function ProjectsScreenContent({
                             ))}
                           </div>
                           <div className="flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="text-sm font-bold text-slate-500">
-                              <span className="font-black text-emerald-700">{project.verified}</span>
-                            </div>
                             <div className="flex items-center gap-3">
                               {justApplied === project.title && (
                                 <span className="text-xs font-extrabold text-teal-700">
@@ -311,7 +308,7 @@ function ProjectsScreenContent({
                 <section>
                   <div className="mb-3 flex items-center justify-between gap-4">
                     <h2 className="text-xl font-black">추천 인재</h2>
-                    <span className="text-sm font-extrabold text-slate-500">검증 프로필</span>
+                    <span className="text-sm font-extrabold text-slate-500">추천 목록</span>
                   </div>
                   <div className="grid gap-4">
                     {talents.slice(0, 6).map((talent) => {
