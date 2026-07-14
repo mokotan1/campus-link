@@ -82,7 +82,7 @@ export function mapApplicationRecord(record: MyApplicationRecord): Application {
     id: record.id,
     title: record.project.title,
     type: "지원",
-    direction: "sent",
+    direction: record.direction,
     status: mapApplicationStatus(record.status),
     meta: [record.targetRole, record.project.campus, record.message].filter(Boolean).join(" · "),
     projectId: String(record.projectId),
