@@ -4,6 +4,7 @@ import test from "node:test";
 import { AppError } from "../../../lib/api/error.ts";
 import {
   assertProjectAcceptingNewParticipants,
+  isProjectAcceptingNewParticipants,
   validateProjectDates,
 } from "./projects.guards.ts";
 
@@ -110,7 +111,7 @@ test("does not compare project start date to recruitment deadline", () => {
 test("allows participation only while recruiting before the deadline", () => {
   assert.doesNotThrow(() =>
     assertProjectAcceptingNewParticipants(
-      { recruitment_status: "RECRUITING", end_date: "2026-07-14" },
+      { recruitment_status: "RECRUITING", recruitment_deadline: "2026-07-14" },
       referenceDate,
     ),
   );
@@ -118,9 +119,53 @@ test("allows participation only while recruiting before the deadline", () => {
   assertAppError(
     () =>
       assertProjectAcceptingNewParticipants(
-        { recruitment_status: "RECRUITING", end_date: "2026-07-13" },
+        { recruitment_status: "RECRUITING", recruitment_deadline: "2026-07-13" },
         referenceDate,
       ),
     "INVALID_STATE_TRANSITION",
+  );
+});
+
+test("today is eligible and yesterday is closed for participation", () => {
+  assert.equal(
+    isProjectAcceptingNewParticipants(
+      { recruitment_status: "RECRUITING", recruitment_deadline: "2026-07-14" },
+      referenceDate,
+    ),
+    true,
+  );
+
+  assert.equal(
+    isProjectAcceptingNewParticipants(
+      { recruitment_status: "RECRUITING", recruitment_deadline: "2026-07-13" },
+      referenceDate,
+    ),
+    false,
+  );
+});
+
+test("recruitment_deadline, not a conflicting end_date, decides eligibility", () => {
+  assert.equal(
+    isProjectAcceptingNewParticipants(
+      {
+        recruitment_status: "RECRUITING",
+        recruitment_deadline: "2026-07-14",
+        end_date: "2026-07-13",
+      },
+      referenceDate,
+    ),
+    true,
+  );
+
+  assert.equal(
+    isProjectAcceptingNewParticipants(
+      {
+        recruitment_status: "RECRUITING",
+        recruitment_deadline: "2026-07-13",
+        end_date: "2026-07-20",
+      },
+      referenceDate,
+    ),
+    false,
   );
 });

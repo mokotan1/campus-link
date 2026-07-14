@@ -184,8 +184,7 @@ export const projectRepository: ProjectRepository = {
       expected_member_count: values.expectedMemberCount,
       start_date: values.startDate || null,
       end_date: values.endDate || null,
-      // Interim: keep deadline in sync with endDate until B2 adds a dedicated field.
-      recruitment_deadline: values.endDate || null,
+      recruitment_deadline: values.recruitmentDeadline || null,
       cover_image_name: values.coverImageName || null,
     };
     const { data: project, error } = await supabase
@@ -234,8 +233,7 @@ export const projectRepository: ProjectRepository = {
       expected_member_count: values.expectedMemberCount,
       start_date: values.startDate || null,
       end_date: values.endDate || null,
-      // Interim: keep deadline in sync with endDate until B2 adds a dedicated field.
-      recruitment_deadline: values.endDate || null,
+      recruitment_deadline: values.recruitmentDeadline || null,
       cover_image_name: values.coverImageName || null,
     };
     const { data: project, error } = await supabase

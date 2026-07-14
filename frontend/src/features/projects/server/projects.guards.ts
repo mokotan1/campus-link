@@ -2,7 +2,7 @@ import { AppError } from "../../../lib/api/error.ts";
 
 type ProjectAvailability = {
   recruitment_status: string;
-  end_date: string | null;
+  recruitment_deadline: string | null;
 };
 
 type ProjectDates = {
@@ -57,7 +57,7 @@ export function isProjectAcceptingNewParticipants(
   project: ProjectAvailability,
   referenceDate = new Date(),
 ) {
-  const deadline = project.end_date;
+  const deadline = project.recruitment_deadline;
 
   return (
     project.recruitment_status === "RECRUITING" &&

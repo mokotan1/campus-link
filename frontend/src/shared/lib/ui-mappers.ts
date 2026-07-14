@@ -51,7 +51,8 @@ export function mapProjectRecord(record: ProjectRecord): Project {
     role: record.requiredRoles[0] ?? "모집 역할 협의",
     maxMembers: record.expectedMemberCount ?? 0,
     currentMembers: 0,
-    deadline: record.endDate ?? "",
+    // Prefer recruitmentDeadline; endDate is a legacy fallback while old rows retire.
+    deadline: record.recruitmentDeadline ?? record.endDate ?? "",
     createdAt: record.createdAt,
     status: mapProjectStatus(record.recruitmentStatus),
     summary: record.summary,
