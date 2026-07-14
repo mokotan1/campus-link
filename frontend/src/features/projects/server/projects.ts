@@ -5,23 +5,15 @@ import { AppError } from "@/lib/api/error";
 
 import { validateProjectDates } from "./projects.guards";
 import { listMyProjectsForUser } from "./projects.mapper";
+import {
+  normalizeProjectPayload,
+  type ProjectFormValues,
+  validateExpectedMemberCount,
+} from "./projects.payload";
 import { projectRepository } from "./projects.repository";
 
-export type ProjectFormValues = {
-  title: string;
-  summary: string;
-  description: string;
-  projectType: string;
-  collaborationMode: string;
-  recruitmentStatus: "RECRUITING" | "CLOSED";
-  campus: string;
-  requiredRoles: string[];
-  tools: string[];
-  expectedMemberCount: number | null;
-  startDate: string;
-  endDate: string;
-  coverImageName: string;
-};
+export type { ProjectFormValues };
+export { normalizeProjectPayload };
 
 export type ProjectListFilters = {
   query: string;
@@ -56,42 +48,6 @@ export type ProjectRecord = {
   };
 };
 
-function toStringArray(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((item) => String(item ?? "").trim())
-    .filter(Boolean);
-}
-
-export function normalizeProjectPayload(body: unknown): ProjectFormValues {
-  const payload = (body ?? {}) as Record<string, unknown>;
-  const recruitmentStatus =
-    payload.recruitmentStatus === "CLOSED" ? "CLOSED" : "RECRUITING";
-  const rawExpectedMemberCount = Number(payload.expectedMemberCount);
-  const expectedMemberCount = Number.isFinite(rawExpectedMemberCount)
-    ? rawExpectedMemberCount
-    : null;
-
-  return {
-    title: String(payload.title ?? "").trim(),
-    summary: String(payload.summary ?? "").trim(),
-    description: String(payload.description ?? "").trim(),
-    projectType: String(payload.projectType ?? "").trim(),
-    collaborationMode: String(payload.collaborationMode ?? "").trim(),
-    recruitmentStatus,
-    campus: String(payload.campus ?? "").trim(),
-    requiredRoles: toStringArray(payload.requiredRoles),
-    tools: toStringArray(payload.tools),
-    expectedMemberCount,
-    startDate: String(payload.startDate ?? "").trim(),
-    endDate: String(payload.endDate ?? "").trim(),
-    coverImageName: String(payload.coverImageName ?? "").trim().slice(0, 255),
-  };
-}
-
 export function validateProjectPayload(values: ProjectFormValues) {
   if (!values.title) {
     throw new AppError("VALIDATION_ERROR", "프로젝트 제목은 필수입니다.");
@@ -109,6 +65,7 @@ export function validateProjectPayload(values: ProjectFormValues) {
     throw new AppError("VALIDATION_ERROR", "협업 방식은 필수입니다.");
   }
 
+  validateExpectedMemberCount(values.expectedMemberCount);
   validateProjectDates(values);
 }
 
