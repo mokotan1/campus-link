@@ -7,12 +7,12 @@ import { fileURLToPath } from "node:url";
 import { AppError, INTERNAL_ERROR_MESSAGE } from "../../../lib/api/error.ts";
 import { apiCreated, resolveApiError } from "../../../lib/api/response.ts";
 import { mapProjectRecord } from "../../../shared/lib/ui-mappers.ts";
-import { validateProjectDates } from "./projects.guards.ts";
 import { mapProjectRow } from "./projects.mapper.ts";
 import {
   normalizeProjectPayload,
   validateExpectedMemberCount,
 } from "./projects.payload.ts";
+import { validateProjectPayload } from "./projects.validation.ts";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REFERENCE_DATE = new Date("2026-07-14T00:00:00.000Z");
@@ -24,34 +24,6 @@ function assertAppError(fn, code) {
     assert.equal(error.code, code);
     return true;
   });
-}
-
-/**
- * `projects.ts` re-exports `validateProjectPayload`, but that module imports
- * "server-only" (and Supabase-backed collaborators) and cannot be loaded in a
- * plain Node test process. This mirrors its logic 1:1 using the same
- * import-safe building blocks (`projects.payload.ts` / `projects.guards.ts`)
- * so the contract stays faithful without importing the guarded module.
- */
-function assertValidatesAsProjectPayload(values, referenceDate) {
-  if (!values.title) {
-    throw new AppError("VALIDATION_ERROR", "프로젝트 제목은 필수입니다.");
-  }
-
-  if (!values.summary) {
-    throw new AppError("VALIDATION_ERROR", "프로젝트 한 줄 소개는 필수입니다.");
-  }
-
-  if (!values.projectType) {
-    throw new AppError("VALIDATION_ERROR", "프로젝트 유형은 필수입니다.");
-  }
-
-  if (!values.collaborationMode) {
-    throw new AppError("VALIDATION_ERROR", "협업 방식은 필수입니다.");
-  }
-
-  validateExpectedMemberCount(values.expectedMemberCount);
-  validateProjectDates(values, referenceDate);
 }
 
 function validCreationBody(overrides = {}) {
@@ -104,7 +76,7 @@ test("a valid creation payload with expectedMemberCount: null and a future deadl
 
   assert.equal(values.expectedMemberCount, null);
   assert.equal(values.recruitmentDeadline, FUTURE_DEADLINE);
-  assert.doesNotThrow(() => assertValidatesAsProjectPayload(values, REFERENCE_DATE));
+  assert.doesNotThrow(() => validateProjectPayload(values, REFERENCE_DATE));
 });
 
 test("invalid expectedMemberCount produces the public VALIDATION_ERROR response with HTTP 400", () => {
@@ -139,7 +111,7 @@ test("a missing recruitment deadline produces the public VALIDATION_ERROR respon
   let caught;
 
   try {
-    assertValidatesAsProjectPayload(values, REFERENCE_DATE);
+    validateProjectPayload(values, REFERENCE_DATE);
   } catch (error) {
     caught = error;
   }
