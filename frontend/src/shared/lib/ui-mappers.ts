@@ -57,7 +57,6 @@ export function mapProjectRecord(record: ProjectRecord): Project {
     summary: record.summary,
     content: record.description || record.summary,
     tags,
-    verified: "실제 API 데이터",
     action: "지원하기",
     accent: (["blue", "amber", "green"] as const)[record.id % 3],
     coverImageName: record.coverImageName ?? undefined,

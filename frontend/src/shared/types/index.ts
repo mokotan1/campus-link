@@ -27,7 +27,6 @@ export type Project = {
   summary: string;
   content: string;
   tags: { label: string; tone?: TagTone }[];
-  verified: string;
   action: "지원하기" | "제안하기";
   accent: "blue" | "amber" | "green";
   coverImageName?: string;

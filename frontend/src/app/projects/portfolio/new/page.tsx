@@ -53,10 +53,9 @@ export default function NewPortfolioPage() {
         <Link href="/projects" className="text-sm font-extrabold text-slate-500 hover:text-slate-950">
           ← 프로젝트 · 포트폴리오로
         </Link>
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.12em] text-teal-700">New Portfolio</p>
         <h1 className="mt-2 text-3xl font-black tracking-[0] sm:text-4xl">포트폴리오 작성</h1>
         <p className="mt-2 max-w-2xl leading-7 text-slate-600">
-          작업물을 블로그 글처럼 정리해보세요. 제목, 대표 이미지, 소개, 본문과 외부 링크를 함께 입력하면 됩니다.
+          작업물 소개와 외부 링크를 입력해주세요.
         </p>
 
         <form className="mt-8 grid gap-8" onSubmit={handleSubmit}>

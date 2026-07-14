@@ -34,11 +34,6 @@ function deriveProjectStatus(currentMembers: number, maxMembers: number): Projec
   return "모집중";
 }
 
-function formatDeadline(deadline: string): string {
-  if (!deadline) return "마감일 미정";
-  return deadline.replaceAll("-", ".");
-}
-
 export function projectsFromCsv(raw: string): Project[] {
   const rows = parseCsv(raw);
 
@@ -79,7 +74,6 @@ export function projectsFromCsv(raw: string): Project[] {
       summary,
       content,
       tags,
-      verified: `${row.category ?? ""} · 인원 ${currentMembers}/${maxMembers}명 · 마감 ${formatDeadline(deadline)}`,
       action: "지원하기",
       accent: ACCENTS[numericId % ACCENTS.length],
     } satisfies Project;
