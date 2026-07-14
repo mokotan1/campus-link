@@ -15,6 +15,7 @@ import {
   applicationRepository,
   type MatchedContactDetails,
 } from "./applications.repository";
+import type { ReceivedApplicationRecord } from "./applications.received";
 
 export type ApplicationFormValues = {
   projectId: number | null;
@@ -174,6 +175,16 @@ export async function listMyApplications() {
   return applicationRepository.listByApplicant(currentUser.id);
 }
 
+export async function listReceivedApplications(): Promise<ReceivedApplicationRecord[] | null> {
+  const currentUser = await getCurrentAppUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  return applicationRepository.listReceivedByProjectOwner(currentUser.id);
+}
+
 export async function createApplicationForSession(values: ApplicationFormValues) {
   const currentUser = await getCurrentAppUser();
 
@@ -206,4 +217,4 @@ export async function decideApplicationForSession(
 
   return decideApplication(currentUser, applicationId, decision);
 }
-
+

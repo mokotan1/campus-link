@@ -18,14 +18,14 @@ type ProposalRow = Pick<
 
 type ProjectSummaryRow = Pick<
   Tables<"projects">,
-  "id" | "owner_user_id" | "title" | "campus" | "recruitment_status"
+  "id" | "owner_user_id" | "title" | "campus" | "recruitment_status" | "end_date"
 >;
 
 const PROPOSAL_SELECT =
   "id, project_id, sender_user_id, receiver_user_id, message, proposal_status, created_at, updated_at" as const;
 
 const PROJECT_SUMMARY_SELECT =
-  "id, owner_user_id, title, campus, recruitment_status" as const;
+  "id, owner_user_id, title, campus, recruitment_status, end_date" as const;
 
 export type ProjectSummary = ProjectSummaryRow;
 
@@ -243,4 +243,4 @@ export const proposalRepository: ProposalRepository = {
     return data as ProposalRow;
   },
 };
-
+

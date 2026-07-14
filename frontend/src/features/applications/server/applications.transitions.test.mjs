@@ -17,6 +17,7 @@ const recruitingProject = {
   title: "Campus App",
   campus: "Seoul",
   recruitment_status: "RECRUITING",
+  end_date: "2026-07-20",
   required_roles: ["Developer"],
 };
 
@@ -32,6 +33,17 @@ test("cannot apply to own project", () => {
   assertAppError(
     () => assertCanApplyToProject(owner, recruitingProject),
     "FORBIDDEN",
+  );
+});
+
+test("cannot apply after the recruitment deadline", () => {
+  assertAppError(
+    () =>
+      assertCanApplyToProject(applicant, {
+        ...recruitingProject,
+        end_date: "2026-07-01",
+      }),
+    "INVALID_STATE_TRANSITION",
   );
 });
 

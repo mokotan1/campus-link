@@ -1,10 +1,12 @@
 import { AppError } from "../../../lib/api/error.ts";
+import { assertProjectAcceptingNewParticipants } from "../../projects/server/projects.guards.ts";
 
 import type { CurrentAppUser } from "../../auth/server/current-app-user.mapper.ts";
 
 type ProjectSummary = {
   owner_user_id: number;
   recruitment_status: string;
+  end_date: string | null;
 };
 
 export function assertProjectOwnerForProposal(
@@ -15,12 +17,7 @@ export function assertProjectOwnerForProposal(
     throw new AppError("FORBIDDEN", "프로젝트 소유자만 제안을 보낼 수 있습니다.");
   }
 
-  if (project.recruitment_status !== "RECRUITING") {
-    throw new AppError(
-      "INVALID_STATE_TRANSITION",
-      "현재 모집 중인 프로젝트만 제안을 보낼 수 있습니다.",
-    );
-  }
+  assertProjectAcceptingNewParticipants(project);
 }
 
 export function assertDistinctProposalUsers(
@@ -29,6 +26,12 @@ export function assertDistinctProposalUsers(
 ) {
   if (currentUser.id === receiverUserId) {
     throw new AppError("FORBIDDEN", "자신에게는 제안을 보낼 수 없습니다.");
+  }
+}
+
+export function assertProposalMessage(message: string) {
+  if (!message.trim()) {
+    throw new AppError("VALIDATION_ERROR", "제안 메시지는 필수입니다.");
   }
 }
 
